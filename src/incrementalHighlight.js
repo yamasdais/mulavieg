@@ -8,8 +8,6 @@
 *     -> ffmpeg 使うところは改善
 * * 試作的なコードをもうちょっと整理する
 * PLAN:
-* * ffmpeg の置き場所をどっか cdn に変える。
-*     -> COOP/COEP 設定がなんかうまくいかない模様
 * * 使い方を書く
 *     -> ツールチップ追加
 * * ffmpeg log 表示をオプションに
@@ -65,6 +63,9 @@ function makeCanvas(hlarea, width, height) {
     });
 }
 
+/*
+ * Movie format selection stuff
+ */
 class MovieFormatItem {
     constructor(name, ext, mime) {
         this.name = name;
@@ -76,6 +77,7 @@ class MovieFormatItem {
 function* getSupportedMovieFormats() {
     yield new MovieFormatItem("mp4", "mp4", "video/mp4");
     yield new MovieFormatItem("webm", "webm", "video/webm");
+    yield new MovieFormatItem("webp", "webp", "image/webp");
 }
 
 function makeMovieFormats(onChange) {
@@ -102,6 +104,26 @@ function makeMovieFormats(onChange) {
     return formatDict[selector.options[selector.selectedIndex].value];
 }
 
+/*
+ * Interruption support stuff
+ */
+class InterruptionStatus {
+    #isRunning;
+    constructor() {
+        this.#isRunning = false;
+    }
+
+    start() {
+        this.#isRunning = true;
+    }
+    stop() {
+        this.#isRunning = false;
+    }
+    get isStarted() {
+        return this.#isRunning;
+    }
+}
+
 async function makeImageGenerator(param) {
     // fps: frames per second
     // duration: target duration (ms)
@@ -126,6 +148,8 @@ async function makeImageGenerator(param) {
 
     let imgCache;
     const makeImage = async function(imgIdx, prevIdx, curIdx) {
+        if (!param.interruption.isStarted)
+            throw Error("Stopped.");
         await makeCanvas(param.hlarea, width, height)
             .then(canvas => canvas.toDataURL('image/png'))
             .then(imgURL => {
@@ -224,6 +248,17 @@ window.addEventListener("load", function() {
         hlbg = getComputedStyle(highlightArea).backgroundColor;
         document.getElementById('highlightPre').style.background = hlbg;
     }
+    const swichMutable = function(isMutable, extra) {
+        isDisabled = !isMutable;
+        inputArea.disabled = isDisabled;
+        for (const n of [ "inputArea", "refreshButton", "prepareButton",
+                          "genPngButton", "specificLanguage", "viewerFontFamily",
+                          "fontSize", "targetDuration", "fps", "movieFormat" ]) {
+            document.getElementById(n).disabled = isDisabled;
+        }
+        extra();
+    }
+    const interruptor = new InterruptionStatus();
 
     // language text input
     languageText.addEventListener("change", obj => {
@@ -314,6 +349,11 @@ window.addEventListener("load", function() {
     // movie button
     document.getElementById("genMovieButton").title = "Generate movie file of accumulating code. To run this, http server must return COOP/COEP entries in the response header";
     document.getElementById("genMovieButton").addEventListener("click", async obj => {
+        if (interruptor.isStarted) {
+            // cancel
+            interruptor.stop();
+            return;
+        }
         if (!languageText.value) {
             alert("language must be specified explicitly");
             return;
@@ -322,50 +362,70 @@ window.addEventListener("load", function() {
         const fpsVal = parseFloat(fps.value)
         if (!ffmpeg.isLoaded())
             await ffmpeg.load();
-        const genImages = await makeImageGenerator({
-            hlarea: highlightArea,
-            fps: parseFloat(fps.value),
-            duration: parseFloat(targetDuration.value),
-            lang: languageText.value,
-            text: inputArea.value,
-            ffmpeg: ffmpeg,
-        });
-        movieFilename = `text.${movFormat.ext}`;
-        await genImages()
-            .then(vals => {
-                movie = ffmpeg.run(
-                    '-r', `${fpsVal}`,
-                    '-pattern_type', 'glob', '-i', 'image*.png',
-                    '-s', `${vals.width}x${vals.height}`,
-                    '-pix_fmt', 'yuv420p',
-                    movieFilename);
-                return [ vals, movie ];
-            })
-            .then(vals => {
-                return vals[1].then(v => {
-                    // ffmpeg.exit するようにしたので、unlink は要らない？
-                    // for (f of vals[0].fileNames) {
-                    //     ffmpeg.FS('unlink', f);
-                    // }
-                    return ffmpeg.FS('readFile', movieFilename);
+        try {
+            swichMutable(false, () => {
+                displayButton.disabled = true;
+                movieButton.textContent = "Stop";
+            });
+            interruptor.start();
+            const genImages = await makeImageGenerator({
+                hlarea: highlightArea,
+                fps: parseFloat(fps.value),
+                duration: parseFloat(targetDuration.value),
+                lang: languageText.value,
+                text: inputArea.value,
+                ffmpeg: ffmpeg,
+                interruption: interruptor,
+            });
+            movieFilename = `text.${movFormat.ext}`;
+            await genImages()
+                .then(vals => {
+                    if (!interruptor.isStarted)
+                        throw Error("Stopped.");
+                    movie = ffmpeg.run(
+                        '-r', `${fpsVal}`,
+                        '-pattern_type', 'glob', '-i', 'image*.png',
+                        '-s', `${vals.width}x${vals.height}`,
+                        '-pix_fmt', 'yuv420p',
+                        movieFilename);
+                    return [ vals, movie ];
                 })
-            })
-            .then(movie => {
-                const link = document.getElementById("downloader");
-                link.href = URL.createObjectURL(new Blob([movie.buffer], { type: movFormat.mime }));
-                link.download = movieFilename;
-                link.target = '_blank';
-                link.click();
-            })
-            .catch(alert);
+                .then(vals => {
+                    if (!interruptor.isStarted)
+                        throw Error("Stopped.");
+                    return vals[1].then(v => {
+                        return ffmpeg.FS('readFile', movieFilename);
+                    })
+                })
+                .then(movie => {
+                    const link = document.getElementById("downloader");
+                    link.href = URL.createObjectURL(new Blob([movie.buffer], { type: movFormat.mime }));
+                    link.download = movieFilename;
+                    link.target = '_blank';
+                    link.click();
+                })
+                .catch(alert);
 
-        await ffmpeg.exit();
+        } finally {
+            interruptor.stop();
+            await ffmpeg.exit();
+            swichMutable(true, () => {
+                displayButton.disabled = false;
+                movieButton.textContent = "Movie";
+            });
+        }
+
 
     })
 
     // Preview button
     displayButton.title = "You can see accumulated highlight code. Language must be specified to press";
     displayButton.addEventListener("click", obj => {
+        if (interruptor.isStarted) {
+            // cancel
+            interruptor.stop();
+            return;
+        }
         const text = inputArea.value;
         const lang = languageText.value;
         if (!lang) {
@@ -381,44 +441,56 @@ window.addEventListener("load", function() {
         const status = document.getElementById("status");
         const durationResult = document.getElementById("duration");
 
-        //const blob = new Blob([document.getElementById("highlightWorker").textContent], 
-        //         { type: 'text/javascript'});
-        //const worker = new Worker(window.URL.createObjectURL(blob));
-        const worker = makeHighlightWorker();
-        let wasError = false;
-        let textCursorEnabled = true;
-        worker.addEventListener("message", e => {
-            highlightArea.innerHTML = e.data.value + (textCursorEnabled ? "\u2588" : "");
-        });
-        worker.addEventListener("error", e => {
-            wasError = true;
-            alert(e.message)
-        });
-        const width = highlightArea.clientWidth;
-        const height = highlightArea.clientHeight;
-        highlightArea.innerHTML = "";
-        highlightArea.width = width;
-        highlightArea.height = height;
-        durationResult.value = "";
-        let i = prev = 0;
-        const startTime = performance.now();
-        const timerId = setInterval(() => {
-            if (wasError) {
-                clearInterval(timerId);
-            } else {
-                status.value = i + "/" + textCount
-                worker.postMessage({language: lang, text: text.substring(0, i)})
-                prev = i;
-                i += incPerFrame;
-                if (i >= textCount) {
-                    clearInterval(timerId);
-                    textCursorEnabled = false;
-                    worker.postMessage({ language: lang, text: text });
-                    const realDuration = performance.now() - startTime;
-                    durationResult.value = realDuration + " ms";
-                }
+            swichMutable(false, () => {
+                displayButton.textContent = "Stop";
+                movieButton.disabled = true;
+            });
+            interruptor.start();
+            const onFinal = function() {
+                interruptor.stop();
+                swichMutable(true, () => {
+                    displayButton.textContent = "Preview";
+                    movieButton.disabled = false;
+                });
             }
-        }, frameMS);
+
+            const worker = makeHighlightWorker();
+            let wasError = false;
+            let textCursorEnabled = true;
+            worker.addEventListener("message", e => {
+                highlightArea.innerHTML = e.data.value + (textCursorEnabled ? "\u2588" : "");
+            });
+            worker.addEventListener("error", e => {
+                wasError = true;
+                alert(e.message)
+            });
+            const width = highlightArea.clientWidth;
+            const height = highlightArea.clientHeight;
+            highlightArea.innerHTML = "";
+            highlightArea.width = width;
+            highlightArea.height = height;
+            durationResult.value = "";
+            let i = prev = 0;
+            const startTime = performance.now();
+            const timerId = setInterval(() => {
+                if (wasError || !interruptor.isStarted) {
+                    clearInterval(timerId);
+                    onFinal();
+                } else {
+                    status.value = i + "/" + textCount
+                    worker.postMessage({language: lang, text: text.substring(0, i)})
+                    prev = i;
+                    i += incPerFrame;
+                    if (i >= textCount) {
+                        clearInterval(timerId);
+                        textCursorEnabled = false;
+                        worker.postMessage({ language: lang, text: text });
+                        const realDuration = performance.now() - startTime;
+                        durationResult.value = realDuration + " ms";
+                        onFinal();
+                    }
+                }
+            }, frameMS);
     });
 
     // style list
