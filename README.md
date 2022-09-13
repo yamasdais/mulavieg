@@ -2,7 +2,7 @@
 
 Cumulative text movie maker on single page application
 
-## description
+## Description
 
 This SPA(single page application) generates highlighted code image and movie of accumulating it.
 I hope this is useful, but without any warranty.
@@ -23,6 +23,8 @@ docker build --pull --rm -t mulavieg:dev --build-arg branch=develop .
 # run container
 docker run --name mulavieg_master -p 8888:8888 mulavieg:latest
 ~~~
+
+Then access http://localhost:8888/ on you web browser.
 
 ## Copyright
 
