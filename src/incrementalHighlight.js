@@ -274,6 +274,7 @@ window.addEventListener("load", function() {
     
     // font family
     viewerFontFamily.addEventListener("change", obj => {
+        viewerFontFamily.style.fontFamily = viewerFontFamily.value;
         viewer.style.fontFamily = viewerFontFamily.value;
         storeObjectValue("viewerFontFamily", viewerFontFamily.value);
     })
