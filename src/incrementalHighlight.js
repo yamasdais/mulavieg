@@ -52,14 +52,9 @@ auto foo(T&& v) {
 */
 
 function makeCanvas(hlarea, width, height) {
-    const w = width;
-    const h = height;
-    const adjWidth = (w % 2) ? w + 1 : w;
-    const adjHeight = (h % 2) ? h + 1 : h;
-
     return html2canvas(hlarea, {
-        width: adjWidth,
-        height: adjHeight,
+        width: width,
+        height: height,
     });
 }
 
@@ -216,8 +211,11 @@ window.addEventListener("load", function() {
         if (currentStyle !== newStyle) {
             const newStyleInst = document.querySelector(`link[title="${newStyle}"`);
             newStyleInst.removeAttribute("disabled");
-            document.querySelector(`link[title="${currentStyle}"`)
-                .setAttribute("disabled", "disabled");
+            const curStyleInst = document.querySelector(`link[title="${currentStyle}"`);
+            curStyleInst.setAttribute("disabled", "disabled");
+
+            newStyleInst.setAttribute('rel', 'stylesheet');
+            curStyleInst.setAttribute('rel', 'alternate stylesheet');
 
             current.classList.remove("current");
             nextItem = document.querySelector(`.styles li[title="${newStyle}"]`);
