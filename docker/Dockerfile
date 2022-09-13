@@ -6,7 +6,9 @@ ARG branch=master
 WORKDIR /home
 RUN apk --update add python3 git \
  && rm -rf /var/cache/apk/* \
- && git clone --branch ${branch} ${repository}
+ && git config --global core.fileMode false \
+ && git clone --branch ${branch} ${repository} \
+ && chmod +x mulavieg/docker/runOnContainer.sh
  
 EXPOSE 8888
 CMD mulavieg/docker/runOnContainer.sh
