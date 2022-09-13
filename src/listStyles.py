@@ -12,7 +12,7 @@ with open("../../styleLinks.txt", mode="w") as links, open("../../selList.txt", 
         name = headPat.sub(lambda x: x.group(0).upper(), name)
         name = afterSlash.sub(lambda x: x.group(0).upper(), name)
         name = afterHyphen.sub(lambda x: f" {x.group(1).upper()}", name)
-        print(f'        <link rel="alternate stylesheet" title="{name}" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.4.0/styles/{fname}" disabled="disabled"/>',
+        print(f'        <link rel="alternate stylesheet" title="{name}" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.6.0/styles/{fname}" disabled="disabled"/>',
             end="\n", file=links)
         print(f'                                <li title="{name}">{name}</li>',
             end="\n", file=lists)
