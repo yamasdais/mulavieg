@@ -9,4 +9,4 @@ RUN apk --update add python3 git \
  && git clone --branch ${branch} ${repository}
  
 EXPOSE 8888
-CMD exec sh mulavieg/docker/runOnContainer.sh
+CMD mulavieg/docker/runOnContainer.sh
