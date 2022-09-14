@@ -2,7 +2,7 @@
 
 Cumulative text movie maker on single page application
 
-<div><video controls muted autoplay loop
+<div><video controls muted
             poster="https://user-images.githubusercontent.com/24844381/190144936-2814fd75-797f-4b3c-918d-7d4f69e7c506.png"
             src="https://user-images.githubusercontent.com/24844381/190123884-41883be1-e540-400e-afa4-c93f00f9e2ce.mp4"></video></div>
 
