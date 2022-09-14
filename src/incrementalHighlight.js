@@ -51,13 +51,26 @@ auto foo(T&& v) {
 }
 */
 
-function makeCanvas(hlarea, width, height) {
-    return html2canvas(hlarea, {
+function makeCanvas(hlarea, width, height, isTransparent) {
+    bgC = isTransparent
+        ? "transparent"
+        : getComputedStyle(hlarea).getPropertyValue('background');
+    return htmlToImage.toCanvas(hlarea, {
         width: width,
         height: height,
     });
 }
 
+function makePng(elem, width, height, isTransparent) {
+    bgC = isTransparent
+        ? "transparent"
+        : getComputedStyle(elem).getPropertyValue('background');
+    return htmlToImage.toPng(elem, {
+        width: width,
+        height: height,
+        background: bgC,
+    })
+}
 /*
  * Movie format selection stuff
  */
@@ -145,8 +158,7 @@ async function makeImageGenerator(param) {
     const makeImage = async function(imgIdx, prevIdx, curIdx) {
         if (!param.interruption.isStarted)
             throw Error("Stopped.");
-        await makeCanvas(param.hlarea, width, height)
-            .then(canvas => canvas.toDataURL('image/png'))
+        await makePng(param.hlarea, width, height)
             .then(imgURL => {
                 fname = `image${genFileNumber(imgIdx)}.png`;
                 fileNames.push(fname);
@@ -230,7 +242,7 @@ window.addEventListener("load", function() {
     const ffmpeg = createFFmpeg({
         corePath: new URL("./lib/ffmpeg-core.js", document.location).href,
         log: true,
-    })
+    });
 
     const inputArea = document.getElementById("inputArea");
     const highlightArea = document.getElementById("highlightArea");
@@ -336,6 +348,16 @@ window.addEventListener("load", function() {
     // PNG button
     document.getElementById("genPngButton").title = "Generate PNG image of current highlighted code pane.";
     document.getElementById("genPngButton").addEventListener("click", obj => {
+        makePng(highlightArea, highlightArea.clientWidth, highlightArea.clientHeight)
+            .then(dUrl => {
+                var link = document.getElementById("downloader");
+                link.href = dUrl;
+                link.download = "highlight.png";
+                link.target = '_blank';
+                link.click();
+            })
+
+        /*
         makeCanvas(highlightArea, highlightArea.clientWidth, highlightArea.clientHeight).then(function(canvas) {
             var link = document.getElementById("downloader");
             link.href = canvas.toDataURL("image/png");
@@ -343,6 +365,7 @@ window.addEventListener("load", function() {
             link.target = '_blank';
             link.click();
         })
+        */
     });
 
     // movie button
