@@ -223,10 +223,13 @@ async function makeImageGenerator(param) {
 window.addEventListener("load", function() {
     const setToValueProperty = (x, v) => x.value = v;
     const setToCheckedProperty = (x, v) => x.checked = Boolean(parseInt(v, 10));
-    const setupEventListenerForCheckbox = (name) => {
+    const setupEventListenerForCheckbox = (name, extra) => {
         const e = document.getElementById(name);
         e.addEventListener("change", obj => {
             localStorage.setItem(name, e.checked ? "1" : "0");
+            if (extra) {
+                extra(e.checked);
+            }
         })
     }
     const changeStyle = function(newStyle) {
