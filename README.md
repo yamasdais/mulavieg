@@ -2,6 +2,10 @@
 
 Cumulative text movie maker on single page application
 
+
+https://user-images.githubusercontent.com/24844381/190123884-41883be1-e540-400e-afa4-c93f00f9e2ce.mp4
+
+
 ## Description
 
 This SPA(single page application) generates highlighted code image and movie of accumulating it.
