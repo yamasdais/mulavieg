@@ -183,6 +183,11 @@ async function makeImageGenerator(param) {
         let prev = 0;
         let progress = 0.0;
         let imgIdx = 0;
+        if (param.isInsertThumbnail) {
+            param.hlarea.width = width;
+            param.hlarea.height = height;
+            await makeImage(imgIdx++, prev, undefined);
+        }
         param.hlarea.innerHTML = "";
         param.hlarea.width = width;
         param.hlarea.height = height;
@@ -217,6 +222,13 @@ async function makeImageGenerator(param) {
 
 window.addEventListener("load", function() {
     const setToValueProperty = (x, v) => x.value = v;
+    const setToCheckedProperty = (x, v) => x.checked = Boolean(parseInt(v, 10));
+    const setupEventListenerForCheckbox = (name) => {
+        const e = document.getElementById(name);
+        e.addEventListener("change", obj => {
+            localStorage.setItem(name, e.checked ? "1" : "0");
+        })
+    }
     const changeStyle = function(newStyle) {
         const current = document.querySelector(".styles .current");
         const currentStyle = current.textContent;
@@ -254,6 +266,8 @@ window.addEventListener("load", function() {
     const targetDuration = getObjectWithInitValue("targetDuration", setToValueProperty, 2000);
     const fps = getObjectWithInitValue("fps", setToValueProperty, 30);
     const viewer = document.getElementById("highlightArea");
+    const isInsertThumbnail = getObjectWithInitValue("isInsertThumbnail", setToCheckedProperty, false);
+    setupEventListenerForCheckbox("isInsertThumbnail");
     const refrectBackColor = function() {
         hlbg = getComputedStyle(highlightArea).backgroundColor;
         document.getElementById('highlightPre').style.background = hlbg;
@@ -263,7 +277,8 @@ window.addEventListener("load", function() {
         inputArea.disabled = isDisabled;
         for (const n of [ "inputArea", "refreshButton", "prepareButton",
                           "genPngButton", "specificLanguage", "viewerFontFamily",
-                          "fontSize", "targetDuration", "fps", "movieFormat" ]) {
+                          "fontSize", "targetDuration", "fps", "movieFormat",
+                          "isInsertThumbnail" ]) {
             document.getElementById(n).disabled = isDisabled;
         }
         extra();
@@ -398,6 +413,7 @@ window.addEventListener("load", function() {
                 text: inputArea.value,
                 ffmpeg: ffmpeg,
                 interruption: interruptor,
+                isInsertThumbnail: isInsertThumbnail.checked,
             });
             movieFilename = `text.${movFormat.ext}`;
             await genImages()
