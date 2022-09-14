@@ -4,7 +4,7 @@ Cumulative text movie maker on single page application
 
 <div><video controls muted preload="metadata"
             poster="https://user-images.githubusercontent.com/24844381/190144936-2814fd75-797f-4b3c-918d-7d4f69e7c506.png"
-            src="https://user-images.githubusercontent.com/24844381/190178839-d2f4baa9-3153-4f90-8f7a-94170f7d3151.mp4"></video></div>
+            src="https://user-images.githubusercontent.com/24844381/190181667-560bbf2a-32be-4bc2-a583-22f21e6395a3.mp4"></video></div>
 
 
 ## Description
