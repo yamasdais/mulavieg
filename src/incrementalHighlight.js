@@ -277,7 +277,9 @@ window.addEventListener("load", function() {
     const fps = getObjectWithInitValue("fps", setToValueProperty, 30);
     const viewer = document.getElementById("highlightArea");
     const isInsertThumbnail = getObjectWithInitValue("isInsertThumbnail", setToCheckedProperty, false);
+    const isEnableLastCursor = getObjectWithInitValue("isEnableLastCursor", setToCheckedProperty, false);
     setupEventListenerForCheckbox("isInsertThumbnail");
+    setupEventListenerForCheckbox("isEnableLastCursor");
     const refrectBackColor = function() {
         hlbg = getComputedStyle(highlightArea).backgroundColor;
         document.getElementById('highlightPre').style.background = hlbg;
@@ -288,7 +290,7 @@ window.addEventListener("load", function() {
         for (const n of [ "inputArea", "refreshButton", "prepareButton",
                           "genPngButton", "specificLanguage", "viewerFontFamily",
                           "fontSize", "targetDuration", "fps", "movieFormat",
-                          "isInsertThumbnail" ]) {
+                          "isInsertThumbnail", "isEnableLastCursor" ]) {
             document.getElementById(n).disabled = isDisabled;
         }
         extra();
@@ -368,7 +370,7 @@ window.addEventListener("load", function() {
     // Ready button
     document.getElementById("prepareButton").title = "Make the entire highlighted code on the view. if language is undefined, highlight.js will deduce it.";
     document.getElementById("prepareButton").addEventListener("click", obj => {
-        const text = inputArea.value;
+        const text = inputArea.value + (isEnableLastCursor.checked ? cursorChar.value : "");
         const lang = languageText.value;
         const hilighter = makeHighlighter(lang, text, l => {
             languageText.value = l ?? "";
