@@ -508,7 +508,7 @@ onmessage = e => {
             </div>
         
             <div id="inputPane" class="flexNode flexible">
-                <textarea id="inputArea" placeholder="Put your code here..."></textarea>
+                <textarea id="inputArea" placeholder="Put your code here..." autofocus></textarea>
                 <div>
                     <div id="buttonArea">
                         <button id="refreshButton" style="margin-right: 12px">Refresh</button>
@@ -532,12 +532,23 @@ onmessage = e => {
                     <div class="prefRow">
                         <input id="cursorChar" type="text" list="cursorCharList" name="cursorChar">
                         <datalist id="cursorCharList">
+                            <option>&#x02fd</option>
+                            <option>_</option>
                             <option>&#x2588</option>
+                            <option>&#x258f</option>
                             <option>&#x25a2</option>
                             <option>&#x25a9</option>
                             <option>&#x25ae</option>
+                            <option>&#x25fc</option>
+                            <option>&#xffdc</option>
+                            <option>&#xffe8</option>
+                            <option>&#xffed</option>
                         </datalist>
-                        <label for="cursorChar">Cursor</label>
+                        <label for="cursorChar">Cursor Char</label>
+                    </div>
+                    <div class="prefRow">
+                        <input id="isEnableLastCursor" type="checkbox">
+                        <label for="isEnableLastCursor">Last Cursor</label>
                     </div>
                     <div class="prefRow">
                         <input id="targetDuration" type="range" min="10" max="10000" value="2000">
