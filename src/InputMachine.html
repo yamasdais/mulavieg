@@ -15,7 +15,7 @@
         -->
         <meta http-equiv="Content-Type" content="application/html; charset=utf-8"/>
         <meta charset="utf-8"/>
-        <title>Cumulative Text Movie Maker</title>
+        <title>mulavieg</title>
         <link rel="stylesheet" title="Default" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.6.0/styles/default.min.css" crossorigin="anonymous"/>
         <link rel="alternate stylesheet" title="A 11 Y Dark" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.6.0/styles/a11y-dark.min.css" disabled="disabled" crossorigin="anonymous"/>
         <link rel="alternate stylesheet" title="A 11 Y Light" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.6.0/styles/a11y-light.min.css" disabled="disabled" crossorigin="anonymous"/>
@@ -528,6 +528,16 @@ onmessage = e => {
                     <div class="prefRow">
                         <input id="fontSize" type="number">
                         <label for="fontSize">Font Size</label>
+                    </div>
+                    <div class="prefRow">
+                        <input id="cursorChar" type="text" list="cursorCharList" name="cursorChar">
+                        <datalist id="cursorCharList">
+                            <option>&#x2588</option>
+                            <option>&#x25a2</option>
+                            <option>&#x25a9</option>
+                            <option>&#x25ae</option>
+                        </datalist>
+                        <label for="cursorChar">Cursor</label>
                     </div>
                     <div class="prefRow">
                         <input id="targetDuration" type="range" min="10" max="10000" value="2000">
