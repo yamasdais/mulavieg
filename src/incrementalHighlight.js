@@ -40,6 +40,10 @@ function makeHighlighter(lang, text, onChangedLang) {
         };
     return hilighter;
 }
+function checkCursorChar(elem) {
+    var curText = elem.value;
+    return true;
+}
 
 /* sample code
 auto i = 0;
@@ -199,7 +203,7 @@ async function makeImageGenerator(param) {
             cur = Math.round(progress);
             if (cur !== prev) {
                 res = hljs.highlight(param.text.substring(0, cur), { language: param.lang, ignoreIllegals: true });
-                param.hlarea.innerHTML = res.value + (textCursorEnabled ? "\u2588" : "");
+                param.hlarea.innerHTML = res.value + (textCursorEnabled ? param.cursorChar : "");
             }
             await makeImage(imgIdx++, prev, cur);
             progress += incPerFrame;
@@ -207,7 +211,7 @@ async function makeImageGenerator(param) {
         }
         // +1 final image with cursor
         res = hljs.highlight(param.text, { language: param.lang, ignoreIllegals: true });
-        param.hlarea.innerHTML = res.value + (textCursorEnabled ? "\u2588" : "");
+        param.hlarea.innerHTML = res.value + (textCursorEnabled ? param.cursorChar : "");
         await makeImage(imgIdx++, prev, undefined);
         // +1 final image
         res = hljs.highlight(param.text, { language: param.lang, ignoreIllegals: true });
@@ -251,7 +255,7 @@ window.addEventListener("load", function() {
             nextItem.classList.add("current");
             localStorage.setItem("selectedStyle", newStyle);
         }
-    }
+    };
     let movFormat = makeMovieFormats(cur => {
         movFormat = cur;
     });
@@ -268,6 +272,7 @@ window.addEventListener("load", function() {
     const languageText = getObjectWithInitValue("specificLanguage", setToValueProperty, "");
     const viewerFontFamily = getObjectWithInitValue("viewerFontFamily", setToValueProperty, "源ノ角ゴシック Code JP");
     const fontSize = getObjectWithInitValue("fontSize", setToValueProperty, 16);
+    const cursorChar = getObjectWithInitValue("cursorChar", setToValueProperty, "\u25ae");
     const targetDuration = getObjectWithInitValue("targetDuration", setToValueProperty, 2000);
     const fps = getObjectWithInitValue("fps", setToValueProperty, 30);
     const viewer = document.getElementById("highlightArea");
@@ -276,7 +281,7 @@ window.addEventListener("load", function() {
     const refrectBackColor = function() {
         hlbg = getComputedStyle(highlightArea).backgroundColor;
         document.getElementById('highlightPre').style.background = hlbg;
-    }
+    };
     const swichMutable = function(isMutable, extra) {
         isDisabled = !isMutable;
         inputArea.disabled = isDisabled;
@@ -287,7 +292,7 @@ window.addEventListener("load", function() {
             document.getElementById(n).disabled = isDisabled;
         }
         extra();
-    }
+    };
     const interruptor = new InterruptionStatus();
 
     // language text input
@@ -306,10 +311,13 @@ window.addEventListener("load", function() {
     
     // font family
     viewerFontFamily.addEventListener("change", obj => {
-        viewerFontFamily.style.fontFamily = viewerFontFamily.value;
-        viewer.style.fontFamily = viewerFontFamily.value;
-        storeObjectValue("viewerFontFamily", viewerFontFamily.value);
-    })
+        const fontName = viewerFontFamily.value;
+        viewerFontFamily.style.fontFamily = fontName;
+        viewer.style.fontFamily = fontName;
+        cursorChar.style.fontFamily = fontName;
+        //cursorCharList.style.fontFamily = fontName;
+        storeObjectValue("viewerFontFamily", fontName);
+    });
     viewerFontFamily.dispatchEvent(new Event("change"));
 
     // font size
@@ -319,8 +327,13 @@ window.addEventListener("load", function() {
         }
         viewer.style.fontSize = `${fontSize.value}px`
         storeObjectValue("fontSize", fontSize.value);
-    })
+    });
     fontSize.dispatchEvent(new Event("change"));
+    cursorChar.addEventListener("change", obj => {
+        if (checkCursorChar(cursorChar)) {
+            storeObjectValue("cursorChar", cursorChar.value);
+        }
+    });
 
     // target duration
     targetDuration.addEventListener("input", obj => {
@@ -329,16 +342,16 @@ window.addEventListener("load", function() {
     targetDuration.dispatchEvent(new Event("input"));
     targetDuration.addEventListener("change", obj => {
         storeObjectValue("targetDuration", targetDuration.value);
-    })
+    });
 
     // fps
     fps.addEventListener("input", obj => {
         document.getElementById("fpsValue").innerHTML = fps.value;
-    })
+    });
     fps.dispatchEvent(new Event("input"));
     fps.addEventListener("change", obj => {
         storeObjectValue("fps", fps.value);
-    })
+    });
 
     // highlight style
     changeStyle(localStorage.getItem("selectedStyle") ?? "Default");
@@ -419,6 +432,7 @@ window.addEventListener("load", function() {
                 ffmpeg: ffmpeg,
                 interruption: interruptor,
                 isInsertThumbnail: isInsertThumbnail.checked,
+                cursorChar: cursorChar.value,
             });
             movieFilename = `text.${movFormat.ext}`;
             await genImages()
@@ -501,7 +515,7 @@ window.addEventListener("load", function() {
             let wasError = false;
             let textCursorEnabled = true;
             worker.addEventListener("message", e => {
-                highlightArea.innerHTML = e.data.value + (textCursorEnabled ? "\u2588" : "");
+                highlightArea.innerHTML = e.data.value + (textCursorEnabled ? cursorChar.value : "");
             });
             worker.addEventListener("error", e => {
                 wasError = true;
