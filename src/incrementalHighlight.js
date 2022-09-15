@@ -123,8 +123,10 @@ class InterruptionStatus {
 
     start() {
         this.#isRunning = true;
+        document.body.classList.add('waiting');
     }
     stop() {
+        document.body.classList.remove('waiting');
         this.#isRunning = false;
     }
     get isStarted() {

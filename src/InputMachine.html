@@ -265,7 +265,26 @@
 body {
     background-color: #74c6f1;
     font-family: serif;
+}
 
+body.waiting {
+    cursor: progress;
+
+    background: linear-gradient(#74c6f1, #dbc92c, #eb8a13, #dbc92c,#74c6f1);
+    background-size: 400% 400%;
+    animation: bodyGradient 5s ease infinite;
+}
+@keyframes bodyGradient {
+    0% {
+        background-position: 50% 0%;
+    }
+    50% {
+        background-position: 100% 50%;
+    }
+    100% {
+        background-position: 50% 0%;
+    }
+    
 }
 
 h1 {
@@ -311,6 +330,7 @@ div.flexible {
     width: 100%;
     height: 80%;
     background: #f4eade;
+    cursor: inherit;
 }
 #buttonArea {
     display: flex;
@@ -342,7 +362,7 @@ div.flexible {
 #buttonArea button:disabled {
     outline: none;
     background: #eac9c0;
-    cursor: default;
+    cursor: inherit;
 }
 
 .prefRow {
@@ -356,6 +376,7 @@ label {
     text-align: right;
     font-weight: bolder;
     color: #f4eade;
+    cursor: inherit;
 }
 
 .prefRow input {
@@ -792,7 +813,7 @@ onmessage = e => {
         </div>
         </main>
         <footer>
-            <p>Copyright 2022 yamasdais @ github</p>
+            <p>Copyright 2022 <a href="https://github.com/yamasdais/mulavieg">yamasdais @ github</a></p>
             <p>Powered by <a href="https://highlightjs.org/">highlight.js</a>,
                 <a href="https://github.com/bubkoo/html-to-image">html-to-image</a>
                 <a href="https://github.com/ffmpegwasm/ffmpeg.wasm">ffmpeg.wasm</a></p>
