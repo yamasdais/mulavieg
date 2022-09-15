@@ -3,8 +3,8 @@
 Cumulative text movie maker on single page application
 
 <div><video controls muted preload="metadata"
-            poster="https://user-images.githubusercontent.com/24844381/190144936-2814fd75-797f-4b3c-918d-7d4f69e7c506.png"
-            src="https://user-images.githubusercontent.com/24844381/190178839-d2f4baa9-3153-4f90-8f7a-94170f7d3151.mp4"></video></div>
+            poster="https://user-images.githubusercontent.com/24844381/190195466-37a86b7b-4382-40c9-99ad-e97b71c1879b.png"
+            src="https://user-images.githubusercontent.com/24844381/190195167-04786d5b-3a6a-442e-97f2-fd47d6a98240.mp4"></video></div>
 
 
 ## Description
