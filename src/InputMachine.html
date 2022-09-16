@@ -305,6 +305,11 @@ div.flexible {
     height: 90vh;
 }
 
+code.hljs > .mulavieg-cursor {
+    opacity: 0.7;
+
+}
+
 #highlightArea {
     padding: 0px;
     margin: 2px;
@@ -528,23 +533,6 @@ onmessage = e => {
                     <div class="prefRow">
                         <input id="fontSize" type="number">
                         <label for="fontSize">Font Size</label>
-                    </div>
-                    <div class="prefRow">
-                        <input id="cursorChar" type="text" list="cursorCharList" name="cursorChar">
-                        <datalist id="cursorCharList">
-                            <option>&#x02fd</option>
-                            <option>_</option>
-                            <option>&#x2588</option>
-                            <option>&#x258f</option>
-                            <option>&#x25a2</option>
-                            <option>&#x25a9</option>
-                            <option>&#x25ae</option>
-                            <option>&#x25fc</option>
-                            <option>&#xffdc</option>
-                            <option>&#xffe8</option>
-                            <option>&#xffed</option>
-                        </datalist>
-                        <label for="cursorChar">Cursor Char</label>
                     </div>
                     <div class="prefRow">
                         <input id="isEnableLastCursor" type="checkbox">

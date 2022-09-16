@@ -75,6 +75,28 @@ function makePng(elem, width, height, isTransparent) {
         background: bgC,
     })
 }
+
+const makeCursor = function(trailingCodeTxt, defaultCursor = ' ') {
+    const hljs = document.getElementById("highlightArea");
+    const trail = document.createElement("code");
+    trail.innerHTML = trailingCodeTxt;
+
+    const cursorChar = (trail.textContent.length) > 0 ? trail.textContent.charAt(0) : defaultCursor;
+    const canvas = makeCursor.canvas || (makeCursor.canvas = document.createElement("canvas"));
+    const context = canvas.getContext("2d");
+    context.font = getComputedStyle(hljs).getPropertyValue('font');
+    const metrics = context.measureText(cursorChar);
+    const cursorWidth = `${metrics.width}px`;
+    const bg = getComputedStyle(hljs).getPropertyValue('color');
+    const cursor = document.createElement("span");
+    cursor.textContent = cursorChar;
+    cursor.style.background = bg;
+    cursor.style.marginRight = `-${cursorWidth}`;
+    cursor.style.width = cursorWidth;
+    cursor.classList.add("mulavieg-cursor");
+
+    return cursor;
+}
 /*
  * Movie format selection stuff
  */
@@ -203,7 +225,7 @@ async function makeImageGenerator(param) {
             cur = Math.round(progress);
             if (cur !== prev) {
                 res = hljs.highlight(param.text.substring(0, cur), { language: param.lang, ignoreIllegals: true });
-                param.hlarea.innerHTML = res.value + (textCursorEnabled ? param.cursorChar : "");
+                param.hlarea.innerHTML = res.value + makeCursor().outerHTML;
             }
             await makeImage(imgIdx++, prev, cur);
             progress += incPerFrame;
@@ -211,7 +233,7 @@ async function makeImageGenerator(param) {
         }
         // +1 final image with cursor
         res = hljs.highlight(param.text, { language: param.lang, ignoreIllegals: true });
-        param.hlarea.innerHTML = res.value + (textCursorEnabled ? param.cursorChar : "");
+        param.hlarea.innerHTML = res.value + makeCursor().outerHTML;
         await makeImage(imgIdx++, prev, undefined);
         // +1 final image
         res = hljs.highlight(param.text, { language: param.lang, ignoreIllegals: true });
@@ -272,7 +294,6 @@ window.addEventListener("load", function() {
     const languageText = getObjectWithInitValue("specificLanguage", setToValueProperty, "");
     const viewerFontFamily = getObjectWithInitValue("viewerFontFamily", setToValueProperty, "源ノ角ゴシック Code JP");
     const fontSize = getObjectWithInitValue("fontSize", setToValueProperty, 16);
-    const cursorChar = getObjectWithInitValue("cursorChar", setToValueProperty, "\u25ae");
     const targetDuration = getObjectWithInitValue("targetDuration", setToValueProperty, 2000);
     const fps = getObjectWithInitValue("fps", setToValueProperty, 30);
     const viewer = document.getElementById("highlightArea");
@@ -316,8 +337,6 @@ window.addEventListener("load", function() {
         const fontName = viewerFontFamily.value;
         viewerFontFamily.style.fontFamily = fontName;
         viewer.style.fontFamily = fontName;
-        cursorChar.style.fontFamily = fontName;
-        //cursorCharList.style.fontFamily = fontName;
         storeObjectValue("viewerFontFamily", fontName);
     });
     viewerFontFamily.dispatchEvent(new Event("change"));
@@ -331,11 +350,6 @@ window.addEventListener("load", function() {
         storeObjectValue("fontSize", fontSize.value);
     });
     fontSize.dispatchEvent(new Event("change"));
-    cursorChar.addEventListener("change", obj => {
-        if (checkCursorChar(cursorChar)) {
-            storeObjectValue("cursorChar", cursorChar.value);
-        }
-    });
 
     // target duration
     targetDuration.addEventListener("input", obj => {
@@ -370,14 +384,15 @@ window.addEventListener("load", function() {
     // Ready button
     document.getElementById("prepareButton").title = "Make the entire highlighted code on the view. if language is undefined, highlight.js will deduce it.";
     document.getElementById("prepareButton").addEventListener("click", obj => {
-        const text = inputArea.value + (isEnableLastCursor.checked ? cursorChar.value : "");
+        const text = inputArea.value;
         const lang = languageText.value;
         const hilighter = makeHighlighter(lang, text, l => {
+            // code language is deduced
             languageText.value = l ?? "";
             languageText.dispatchEvent(new Event("change"));
         });
         const html = hilighter();
-        highlightArea.innerHTML = html.value;
+        highlightArea.innerHTML = html.value + (isEnableLastCursor.checked ? makeCursor().outerHTML : "");
         refrectBackColor();
     });
     // PNG button
@@ -391,16 +406,6 @@ window.addEventListener("load", function() {
                 link.target = '_blank';
                 link.click();
             })
-
-        /*
-        makeCanvas(highlightArea, highlightArea.clientWidth, highlightArea.clientHeight).then(function(canvas) {
-            var link = document.getElementById("downloader");
-            link.href = canvas.toDataURL("image/png");
-            link.download = "highlight.png";
-            link.target = '_blank';
-            link.click();
-        })
-        */
     });
 
     // movie button
@@ -434,7 +439,6 @@ window.addEventListener("load", function() {
                 ffmpeg: ffmpeg,
                 interruption: interruptor,
                 isInsertThumbnail: isInsertThumbnail.checked,
-                cursorChar: cursorChar.value,
             });
             movieFilename = `text.${movFormat.ext}`;
             await genImages()
@@ -517,7 +521,7 @@ window.addEventListener("load", function() {
             let wasError = false;
             let textCursorEnabled = true;
             worker.addEventListener("message", e => {
-                highlightArea.innerHTML = e.data.value + (textCursorEnabled ? cursorChar.value : "");
+                highlightArea.innerHTML = e.data.value + (textCursorEnabled ? makeCursor().outerHTML : "");
             });
             worker.addEventListener("error", e => {
                 wasError = true;
