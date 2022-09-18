@@ -76,18 +76,18 @@ function makePng(elem, width, height, isTransparent) {
     })
 }
 
-const makeCursor = function(trailingCodeTxt, defaultCursor = ' ') {
-    const hljs = document.getElementById("highlightArea");
+const makeCursor = function(hlElem, trailingCodeTxt, defaultCursor = ' ') {
+    //const hljs = document.getElementById("highlightArea");
     const trail = document.createElement("code");
-    trail.innerHTML = trailingCodeTxt;
+    trail.innerHTML = trailingCodeTxt || defaultCursor;
 
     const cursorChar = (trail.textContent.length) > 0 ? trail.textContent.charAt(0) : defaultCursor;
     const canvas = makeCursor.canvas || (makeCursor.canvas = document.createElement("canvas"));
     const context = canvas.getContext("2d");
-    context.font = getComputedStyle(hljs).getPropertyValue('font');
+    context.font = getComputedStyle(hlElem).getPropertyValue('font');
     const metrics = context.measureText(cursorChar);
     const cursorWidth = `${metrics.width}px`;
-    const bg = getComputedStyle(hljs).getPropertyValue('color');
+    const bg = getComputedStyle(hlElem).getPropertyValue('color');
     const cursor = document.createElement("span");
     cursor.textContent = cursorChar;
     cursor.style.background = bg;
@@ -97,6 +97,7 @@ const makeCursor = function(trailingCodeTxt, defaultCursor = ' ') {
 
     return cursor;
 }
+
 /*
  * Movie format selection stuff
  */
@@ -158,6 +159,100 @@ class InterruptionStatus {
     get isStarted() {
         return this.#isRunning;
     }
+}
+
+async function makeCodeHighlighter(param) {
+    const text = param.text;
+    const textLen = param.text.length;
+    const beginAt = param.beginAt;
+    const endAt = param.endAt;
+    const onHighlited = param.onHighlited;
+    const isReversed = beginAt > endAt;
+    if (!param.lang) {
+        throw Error("Language is not specified");
+    }
+    const highlighter = text => text
+        ? hljs.highlight(text, { language: param.lang, ignoreIllegals: true }).value
+        : "";
+    const range = function*() {
+        const next = isReversed
+            ? v => v - 1
+            : v => v + 1;
+        let cur = beginAt;
+        while (cur != endAt) {
+            yield cur;
+            cur = next(cur);
+        }
+        //yield cur;
+    }
+    let prevCache, trailCache, cursorCache;
+    
+    const makePrecede = isReversed
+        ? cur => {
+            return prevCache == undefined || cur == undefined
+                ? (prevCache = text.substring(0, beginAt))
+                : (prevCache = text.substring(0, cur - 1));
+        }
+        : cur => {
+            return prevCache == undefined
+                ? (prevCache = (cur == undefined ? text.substring(0, beginAt) : text.substring(0, cur)))
+                : prevCache += (cur == undefined ? "" : text.charAt(cur));
+        };
+    const makeTrailing =  isReversed
+        ? cur => {
+            return trailCache == undefined || cur == undefined
+                ? (trailCache = text.substring(beginAt, textLen))
+                : trailCache
+        }
+        : cur => {
+            return trailCache == undefined || cur == undefined
+                ? (trailCache = text.substring(endAt, textLen))
+                : trailCache;
+        };
+    const makeCurrentCursor =
+        cur => {
+            return cursorCache == undefined
+                ? (cursorCache= makeCursor(param.hlElem, makeTrailing()))
+                : cursorCache;
+        }
+    let frameIdx = 0;
+
+    const makeHilighted = async function(enableCursor, cur) {
+        let codeText;
+        if (enableCursor) {
+            codeText = highlighter(makePrecede(cur))
+                + makeCurrentCursor(cur).outerHTML
+                + highlighter(makeTrailing(cur));
+        } else {
+            codeText = highlighter(makePrecede(cur))
+                + highlighter(makeTrailing(cur));
+        }
+        param.hlElem.innerHTML = codeText;
+    }
+    const hilightText = async function(curTxt) {
+        param.hlElem.innerHTML = highlighter(curTxt);
+    }
+
+    const forwardTask = async function(obj) {
+        const p = obj;
+        return obj;
+    }
+
+    await makeHilighted(true)
+        .then(forwardTask);
+    for (i of range()) {
+        await makeHilighted(true, i)
+            .then(forwardTask);
+    }
+    if (isReversed) {
+        await hilightText(prevCache + trailCache)
+            .then(forwardTask);
+    } else {
+        await hilightText(text)
+            .then(forwardTask);
+    }
+
+
 }
 
 async function makeImageGenerator(param) {
@@ -225,7 +320,7 @@ async function makeImageGenerator(param) {
             cur = Math.round(progress);
             if (cur !== prev) {
                 res = hljs.highlight(param.text.substring(0, cur), { language: param.lang, ignoreIllegals: true });
-                param.hlarea.innerHTML = res.value + makeCursor().outerHTML;
+                param.hlarea.innerHTML = res.value + makeCursor(param.hlarea).outerHTML;
             }
             await makeImage(imgIdx++, prev, cur);
             progress += incPerFrame;
@@ -233,7 +328,7 @@ async function makeImageGenerator(param) {
         }
         // +1 final image with cursor
         res = hljs.highlight(param.text, { language: param.lang, ignoreIllegals: true });
-        param.hlarea.innerHTML = res.value + makeCursor().outerHTML;
+        param.hlarea.innerHTML = res.value + makeCursor(param.hlarea).outerHTML;
         await makeImage(imgIdx++, prev, undefined);
         // +1 final image
         res = hljs.highlight(param.text, { language: param.lang, ignoreIllegals: true });
@@ -294,6 +389,8 @@ window.addEventListener("load", function() {
     const languageText = getObjectWithInitValue("specificLanguage", setToValueProperty, "");
     const viewerFontFamily = getObjectWithInitValue("viewerFontFamily", setToValueProperty, "源ノ角ゴシック Code JP");
     const fontSize = getObjectWithInitValue("fontSize", setToValueProperty, 16);
+    const beginIndex = document.getElementById("beginIndex");
+    const endIndex = document.getElementById("endIndex");
     const targetDuration = getObjectWithInitValue("targetDuration", setToValueProperty, 2000);
     const fps = getObjectWithInitValue("fps", setToValueProperty, 30);
     const viewer = document.getElementById("highlightArea");
@@ -317,6 +414,24 @@ window.addEventListener("load", function() {
         extra();
     };
     const interruptor = new InterruptionStatus();
+    // input text area
+    inputArea.addEventListener("change", obj => {
+        var len = inputArea.value.length;
+        if (beginIndex.max != len) {
+            beginIndex.max = len;
+            beginIndex.dispatchEvent(new Event("change"));
+        }
+        if (endIndex.max != len) {
+            endIndex.max = len;
+            endIndex.dispatchEvent(new Event("change"));
+        }
+        pre = this.preStat
+        if (!pre || pre.len == pre.endIndex) {
+            endIndex.value = endIndex.max;
+            endIndex.dispatchEvent(new Event("change"));
+        }
+        this.preStat = { len: len, endIndex: endIndex.value, };
+    })
 
     // language text input
     languageText.addEventListener("change", obj => {
@@ -350,6 +465,22 @@ window.addEventListener("load", function() {
         storeObjectValue("fontSize", fontSize.value);
     });
     fontSize.dispatchEvent(new Event("change"));
+
+    // begin index
+    beginIndex.addEventListener("change", obj => {
+        this.document.getElementById("beginIndexValue").innerHTML = beginIndex.value;
+    });
+    beginIndex.addEventListener("input", obj => {
+        this.document.getElementById("beginIndexValue").innerHTML = beginIndex.value;
+    });
+
+    // end index
+    endIndex.addEventListener("change", obj => {
+        this.document.getElementById("endIndexValue").innerHTML = endIndex.value;
+    });
+    endIndex.addEventListener("input", obj => {
+        this.document.getElementById("endIndexValue").innerHTML = endIndex.value;
+    });
 
     // target duration
     targetDuration.addEventListener("input", obj => {
@@ -392,7 +523,7 @@ window.addEventListener("load", function() {
             languageText.dispatchEvent(new Event("change"));
         });
         const html = hilighter();
-        highlightArea.innerHTML = html.value + (isEnableLastCursor.checked ? makeCursor().outerHTML : "");
+        highlightArea.innerHTML = html.value + (isEnableLastCursor.checked ? makeCursor(highlightArea).outerHTML : "");
         refrectBackColor();
     });
     // PNG button
@@ -521,7 +652,7 @@ window.addEventListener("load", function() {
             let wasError = false;
             let textCursorEnabled = true;
             worker.addEventListener("message", e => {
-                highlightArea.innerHTML = e.data.value + (textCursorEnabled ? makeCursor().outerHTML : "");
+                highlightArea.innerHTML = e.data.value + (textCursorEnabled ? makeCursor(highlightArea).outerHTML : "");
             });
             worker.addEventListener("error", e => {
                 wasError = true;
@@ -576,5 +707,21 @@ window.addEventListener("load", function() {
             }
             */
         })
+    })
+
+    document.getElementById("testButton").addEventListener("click", obj => {
+        makeCodeHighlighter({
+                hlElem: highlightArea,
+                fps: parseFloat(fps.value),
+                duration: parseFloat(targetDuration.value),
+                lang: languageText.value,
+                text: inputArea.value,
+                interruption: interruptor,
+                isInsertThumbnail: isInsertThumbnail.checked,
+                beginAt: parseInt(beginIndex.value),
+                endAt: parseInt(endIndex.value),
+            }).then(x => {
+
+            });
     })
 });

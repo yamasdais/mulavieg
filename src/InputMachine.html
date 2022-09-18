@@ -521,6 +521,7 @@ onmessage = e => {
                         <button id="displayButton" disabled>Preview</button>
                         <button id="genPngButton">Image</button>
                         <button id="genMovieButton" disabled>Movie</button>
+                        <button id="testButton">t</button>
                     </div>
                     <div class="prefRow">
                         <input id="specificLanguage" type="text">
@@ -533,6 +534,16 @@ onmessage = e => {
                     <div class="prefRow">
                         <input id="fontSize" type="number">
                         <label for="fontSize">Font Size</label>
+                    </div>
+                    <div class="prefRow">
+                        <input id="beginIndex" type="range" min="0" max="0" value="0">
+                        <label for="beginIndex">Begin Index</label>
+                        <p id="beginIndexValue" class="inprefRow">0</p>
+                    </div>
+                    <div class="prefRow">
+                        <input id="endIndex" type="range" min="0" max="0" value="0">
+                        <label for="endIndex">End Index</label>
+                        <p id="endIndexValue" class="inprefRow">0</p>
                     </div>
                     <div class="prefRow">
                         <input id="isEnableLastCursor" type="checkbox">
