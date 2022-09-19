@@ -492,14 +492,6 @@ p.inprefRow {
         <!--unpkg は .js の mime type を text/html で返してくるからか、crossorigin 属性が効かない-->
         <!--<script type="text/javascript" src="https://unpkg.com/browse/@ffmpeg/ffmpeg@0.11.5/dist/ffmpeg.min.js" crossorigin="anonymous"></script>-->
         <script src="./lib/ffmpeg.min.js"></script>
-        <script id="highlightWorker" language="javascript" type="javascript/worker">
-importScripts("https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.6.0/highlight.min.js");
-onmessage = e => {
-    const data = e.data;
-    const result = self.hljs.highlight(data.text, { language: data.language });
-    postMessage( { value: result.value, relevance: result.relevance, illegal: result.illegal });
-};
-        </script>
         <script type="text/javascript" src="./incrementalHighlight.js"></script>
     </head>
     <body>

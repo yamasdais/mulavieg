@@ -23,12 +23,7 @@ function getObjectWithInitValue(name, mutator, defaultValue) {
 function storeObjectValue(name, value) {
     localStorage.setItem(name, value);
 }
-function makeHighlightWorker() {
-    const blob = new Blob([document.getElementById("highlightWorker").textContent], 
-                { type: 'text/javascript'});
-    return new Worker(window.URL.createObjectURL(blob));
-}
-function makeHighlighter(lang, text, onChangedLang) {
+function makeHilighter(lang, text, onChangedLang) {
     const hilighter = lang
         ? () => hljs.highlight(text, { language: lang, ignoreIllegals: true })
         : () => {
@@ -77,7 +72,6 @@ function makePng(elem, width, height, isTransparent) {
 }
 
 const makeCursor = function(hlElem, trailingCodeTxt, defaultCursor = ' ') {
-    //const hljs = document.getElementById("highlightArea");
     const trail = document.createElement("code");
     trail.innerHTML = trailingCodeTxt || defaultCursor;
 
@@ -527,12 +521,12 @@ window.addEventListener("load", function() {
         highlightArea.innerHTML = "";
     })
 
-    // Ready button
+    // Prepare button
     document.getElementById("prepareButton").title = "Make the entire highlighted code on the view. if language is undefined, highlight.js will deduce it.";
     document.getElementById("prepareButton").addEventListener("click", obj => {
         const text = inputArea.value;
         const lang = languageText.value;
-        const hilighter = makeHighlighter(lang, text, l => {
+        const hilighter = makeHilighter(lang, text, l => {
             // code language is deduced
             languageText.value = l ?? "";
             languageText.dispatchEvent(new Event("change"));
@@ -541,6 +535,7 @@ window.addEventListener("load", function() {
         highlightArea.innerHTML = html.value + (isEnableLastCursor.checked ? makeCursor(highlightArea).outerHTML : "");
         refrectBackColor();
     });
+
     // PNG button
     document.getElementById("genPngButton").title = "Generate PNG image of current highlighted code pane.";
     document.getElementById("genPngButton").addEventListener("click", obj => {
@@ -629,102 +624,7 @@ window.addEventListener("load", function() {
 
     // Preview button
     displayButton.title = "You can see accumulated highlight code. Language must be specified to press";
-    displayButton.addEventListener("click", obj => {
-        if (interruptor.isStarted) {
-            // cancel
-            interruptor.stop();
-            return;
-        }
-        const text = inputArea.value;
-        const lang = languageText.value;
-        if (!lang) {
-            alert("language must be specified explicitly");
-            return;
-        }
-        refrectBackColor();
-        const textCount = text.length;
-        const fpsVal = parseFloat(fps.value)
-        const duration = parseFloat(targetDuration.value);
-        const incPerFrame = textCount / (fpsVal * duration / 1000);
-        const frameMS = Math.min(1000 / fpsVal, textCount / incPerFrame);
-        const status = document.getElementById("status");
-        const durationResult = document.getElementById("duration");
-
-            swichMutable(false, () => {
-                displayButton.textContent = "Stop";
-                movieButton.disabled = true;
-            });
-            interruptor.start();
-            const onFinal = function() {
-                interruptor.stop();
-                swichMutable(true, () => {
-                    displayButton.textContent = "Preview";
-                    movieButton.disabled = false;
-                });
-            }
-
-            const worker = makeHighlightWorker();
-            let wasError = false;
-            let textCursorEnabled = true;
-            worker.addEventListener("message", e => {
-                highlightArea.innerHTML = e.data.value + (textCursorEnabled ? makeCursor(highlightArea).outerHTML : "");
-            });
-            worker.addEventListener("error", e => {
-                wasError = true;
-                alert(e.message)
-            });
-            const width = highlightArea.clientWidth;
-            const height = highlightArea.clientHeight;
-            highlightArea.innerHTML = "";
-            highlightArea.width = width;
-            highlightArea.height = height;
-            durationResult.value = "";
-            let i = prev = 0;
-            const startTime = performance.now();
-            const timerId = setInterval(() => {
-                if (wasError || !interruptor.isStarted) {
-                    clearInterval(timerId);
-                    onFinal();
-                } else {
-                    status.value = i + "/" + textCount
-                    worker.postMessage({language: lang, text: text.substring(0, i)})
-                    prev = i;
-                    i += incPerFrame;
-                    if (i >= textCount) {
-                        clearInterval(timerId);
-                        textCursorEnabled = false;
-                        worker.postMessage({ language: lang, text: text });
-                        const realDuration = performance.now() - startTime;
-                        durationResult.value = realDuration + " ms";
-                        onFinal();
-                    }
-                }
-            }, frameMS);
-    });
-
-    // style list
-    document.querySelectorAll(".styles li").forEach(elem => {
-        elem.addEventListener("click", event => {
-            event.preventDefault();
-            changeStyle(event.target.textContent);
-            /*
-            const current = document.querySelector(".styles .current");
-            const currentStyle = current.textContent;
-            const nextStyle = event.target.textContent;
-            if (currentStyle !== nextStyle) {
-                document.querySelector(`link[title="${nextStyle}"`)
-                    .removeAttribute("disabled");
-                document.querySelector(`link[title="${currentStyle}"`)
-                    .setAttribute("disabled", "disabled");
-
-                current.classList.remove("current");
-                event.target.classList.add("current");
-            }
-            */
-        })
-    })
-
-    document.getElementById("testButton").addEventListener("click", async obj => {
+    displayButton.addEventListener("click", async obj => {
         const duration = parseFloat(targetDuration.value);
         const status = document.getElementById("status");
         const durationResult = document.getElementById("duration");
@@ -758,5 +658,16 @@ window.addEventListener("load", function() {
         } finally {
             interruptor.stop();
         }
+    });
+
+    // style list
+    document.querySelectorAll(".styles li").forEach(elem => {
+        elem.addEventListener("click", event => {
+            event.preventDefault();
+            changeStyle(event.target.textContent);
+        })
+    })
+
+    document.getElementById("testButton").addEventListener("click", async obj => {
     })
 });
