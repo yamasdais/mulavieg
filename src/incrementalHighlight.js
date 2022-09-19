@@ -526,13 +526,25 @@ window.addEventListener("load", function() {
     document.getElementById("prepareButton").addEventListener("click", obj => {
         const text = inputArea.value;
         const lang = languageText.value;
-        const hilighter = makeHilighter(lang, text, l => {
+        const beginAt = parseInt(beginIndex.value);
+        const endAt = parseInt(endIndex.value);
+        const hilighter = content => makeHilighter(lang, content, l => {
             // code language is deduced
             languageText.value = l ?? "";
             languageText.dispatchEvent(new Event("change"));
-        });
-        const html = hilighter();
-        highlightArea.innerHTML = html.value + (isEnableLastCursor.checked ? makeCursor(highlightArea).outerHTML : "");
+        })().value;
+        const isReversed = beginAt > endAt;
+        const preceding = text.substring(0, endAt);
+        const trailing = isReversed
+            ? text.substring(beginAt, text.length)
+            : text.substring(endAt, text.length);
+        if (isEnableLastCursor.checked) {
+            highlightArea.innerHTML = hilighter(preceding)
+                + makeCursor(highlightArea, trailing).outerHTML
+                + hilighter(trailing);
+        } else {
+            highlightArea.innerHTML = hilighter(preceding + trailing);
+        }
         refrectBackColor();
     });
 
@@ -625,6 +637,11 @@ window.addEventListener("load", function() {
     // Preview button
     displayButton.title = "You can see accumulated highlight code. Language must be specified to press";
     displayButton.addEventListener("click", async obj => {
+        if (interruptor.isStarted) {
+            // cancel
+            interruptor.stop();
+            return;
+        }
         const duration = parseFloat(targetDuration.value);
         const status = document.getElementById("status");
         const durationResult = document.getElementById("duration");
@@ -643,7 +660,6 @@ window.addEventListener("load", function() {
                 beginAt: parseInt(beginIndex.value),
                 endAt: parseInt(endIndex.value),
                 onHighlited: obj => {
-                    const progress = obj.curPos / obj.totalPos;
                     const remains = obj.totalPos - obj.curPos;
                     const currentTime = performance.now();
                     const realDuration = currentTime - startTime;
