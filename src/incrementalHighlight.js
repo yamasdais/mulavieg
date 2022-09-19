@@ -166,6 +166,11 @@ async function makeCodeHighlighter(param) {
     const textLen = param.text.length;
     const beginAt = param.beginAt;
     const endAt = param.endAt;
+    const fps = param.fps;
+    const duration = param.duration;
+    const totalCycles = Math.abs(endAt - beginAt);
+    const totalFrames = fps * duration / 1000;
+    const incPerFrame = Math.max(totalCycles / totalFrames, 1);
     const onHighlited = param.onHighlited;
     const isReversed = beginAt > endAt;
     if (!param.lang) {
@@ -175,12 +180,15 @@ async function makeCodeHighlighter(param) {
         ? hljs.highlight(text, { language: param.lang, ignoreIllegals: true }).value
         : "";
     const range = function*() {
-        const next = isReversed
-            ? v => v - 1
-            : v => v + 1;
         let cur = beginAt;
-        while (cur != endAt) {
-            yield cur;
+        const next = isReversed
+            ? v => v - incPerFrame
+            : v => v + incPerFrame;
+        const cond = isReversed
+            ? (c, e) => e < c
+            : (c, e) => c < e;
+        while (cond(cur, endAt)) {
+            yield Math.round(cur);
             cur = next(cur);
         }
         //yield cur;
@@ -194,9 +202,7 @@ async function makeCodeHighlighter(param) {
                 : (prevCache = text.substring(0, cur - 1));
         }
         : cur => {
-            return prevCache == undefined
-                ? (prevCache = (cur == undefined ? text.substring(0, beginAt) : text.substring(0, cur)))
-                : prevCache += (cur == undefined ? "" : text.charAt(cur));
+            return (prevCache = (cur == undefined ? text.substring(0, beginAt) : text.substring(0, cur + 1)))
         };
     const makeTrailing =  isReversed
         ? cur => {
@@ -215,9 +221,11 @@ async function makeCodeHighlighter(param) {
                 ? (cursorCache= makeCursor(param.hlElem, makeTrailing()))
                 : cursorCache;
         }
-    let frameIdx = 0;
 
+    let curCycle = 0;
     const makeHilighted = async function(enableCursor, cur) {
+        if (!param.interruption.isStarted)
+            throw Error("Stopped.");
         let codeText;
         if (enableCursor) {
             codeText = highlighter(makePrecede(cur))
@@ -233,17 +241,25 @@ async function makeCodeHighlighter(param) {
         param.hlElem.innerHTML = highlighter(curTxt);
     }
 
-    const forwardTask = async function(obj) {
-        const p = obj;
-        return obj;
+    const totalPos = totalCycles + 2;
+    const forwardTask = async function(cur) {
+        if (onHighlited) {
+            return onHighlited({
+                totalFrames: totalFrames,
+                curPos: curCycle,
+                totalPos: totalPos,
+            });
+        }
     }
 
     await makeHilighted(true)
         .then(forwardTask);
     for (i of range()) {
+        curCycle = Math.abs(i - beginAt) + 1;
         await makeHilighted(true, i)
             .then(forwardTask);
     }
+    curCycle = totalPos;
     if (isReversed) {
         await hilightText(prevCache + trailCache)
             .then(forwardTask);
@@ -251,7 +267,6 @@ async function makeCodeHighlighter(param) {
         await hilightText(text)
             .then(forwardTask);
     }
-
 
 }
 
@@ -709,19 +724,39 @@ window.addEventListener("load", function() {
         })
     })
 
-    document.getElementById("testButton").addEventListener("click", obj => {
-        makeCodeHighlighter({
+    document.getElementById("testButton").addEventListener("click", async obj => {
+        const duration = parseFloat(targetDuration.value);
+        const status = document.getElementById("status");
+        const durationResult = document.getElementById("duration");
+        try {
+            interruptor.start();
+            refrectBackColor();
+            const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+            const startTime = performance.now();
+            await makeCodeHighlighter({
                 hlElem: highlightArea,
-                fps: parseFloat(fps.value),
-                duration: parseFloat(targetDuration.value),
                 lang: languageText.value,
                 text: inputArea.value,
+                fps: parseFloat(fps.value),
+                duration: duration,
                 interruption: interruptor,
-                isInsertThumbnail: isInsertThumbnail.checked,
                 beginAt: parseInt(beginIndex.value),
                 endAt: parseInt(endIndex.value),
-            }).then(x => {
-
+                onHighlited: obj => {
+                    const progress = obj.curPos / obj.totalPos;
+                    const remains = obj.totalPos - obj.curPos;
+                    const currentTime = performance.now();
+                    const realDuration = currentTime - startTime;
+                    durationResult.value = realDuration + " ms";
+                    const timeRemain = duration - realDuration;
+                    if (remains > 1 && timeRemain > 0) {
+                        const waitMs = timeRemain / (remains - 1);
+                        return sleep(waitMs);
+                    }
+                },
             });
+        } finally {
+            interruptor.stop();
+        }
     })
 });
