@@ -646,6 +646,10 @@ window.addEventListener("load", function() {
         const status = document.getElementById("status");
         const durationResult = document.getElementById("duration");
         try {
+            swichMutable(false, () => {
+                displayButton.textContent = "Stop";
+                movieButton.disabled = true;
+            });
             interruptor.start();
             refrectBackColor();
             const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -673,6 +677,10 @@ window.addEventListener("load", function() {
             });
         } finally {
             interruptor.stop();
+            swichMutable(true, () => {
+                displayButton.textContent = "Preview";
+                movieButton.disabled = false;
+            });
         }
     });
 
