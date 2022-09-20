@@ -260,94 +260,6 @@ async function makeCodeHighlighter(param) {
 
 }
 
-async function makeImageGenerator(param) {
-    // fps: frames per second
-    // duration: target duration (ms)
-    const totalFrames = param.fps * param.duration / 1000;
-    const textLen = param.text.length;
-    const incPerFrame = textLen / totalFrames;
-    const width = param.hlarea.clientWidth;
-    const height = param.hlarea.clientHeight;
-    const end = Math.round(totalFrames);
-    const retSize = end + 2;
-    const frameNumLength = ("" + (retSize)).length;
-    const genFileNumber = function(num) {
-        token = "0".repeat(frameNumLength);
-        return (token + num).slice(-frameNumLength);
-    }
-    const fileNames = [];
-
-    const canvasSize = await makeCanvas(param.hlarea, width, height)
-        .then(canvas => {
-            return { w: canvas.width, h: canvas.height }
-        });
-
-    let imgCache;
-    const makeImage = async function(imgIdx, prevIdx, curIdx) {
-        if (!param.interruption.isStarted)
-            throw Error("Stopped.");
-        await makePng(param.hlarea, width, height)
-            .then(imgURL => {
-                fname = `image${genFileNumber(imgIdx)}.png`;
-                fileNames.push(fname);
-                if (imgCache !== undefined && prevIdx === curIdx) {
-                    return param.ffmpeg.FS('writeFile', fname, imgCache);
-                } else {
-                    return fetch(imgURL)
-                        .then(res => res.blob())
-                        .then(blob => blob.arrayBuffer())
-                        .then(buf => {
-                            imgCache = new Uint8Array(buf);
-                            return param.ffmpeg.FS('writeFile', fname, imgCache);
-                        });
-                }
-            })
-            ;
-    }
-
-    let textCursorEnabled = true;
-
-    return async function() {
-        let prev = 0;
-        let progress = 0.0;
-        let imgIdx = 0;
-        if (param.isInsertThumbnail) {
-            param.hlarea.width = width;
-            param.hlarea.height = height;
-            await makeImage(imgIdx++, prev, undefined);
-        }
-        param.hlarea.innerHTML = "";
-        param.hlarea.width = width;
-        param.hlarea.height = height;
-
-        await makeImage(imgIdx++, prev, undefined);
-        for (i = 0; i < end; i++) {
-            cur = Math.round(progress);
-            if (cur !== prev) {
-                res = hljs.highlight(param.text.substring(0, cur), { language: param.lang, ignoreIllegals: true });
-                param.hlarea.innerHTML = res.value + makeCursor(param.hlarea).outerHTML;
-            }
-            await makeImage(imgIdx++, prev, cur);
-            progress += incPerFrame;
-            prev = cur;
-        }
-        // +1 final image with cursor
-        res = hljs.highlight(param.text, { language: param.lang, ignoreIllegals: true });
-        param.hlarea.innerHTML = res.value + makeCursor(param.hlarea).outerHTML;
-        await makeImage(imgIdx++, prev, undefined);
-        // +1 final image
-        res = hljs.highlight(param.text, { language: param.lang, ignoreIllegals: true });
-        param.hlarea.innerHTML = res.value;
-        await makeImage(imgIdx++, prev, undefined);
-
-        return {
-            width: (canvasSize.w % 2) ? canvasSize.w - 1 : canvasSize.w,
-            height: (canvasSize.h % 2) ? canvasSize.h - 1 : canvasSize.h,
-            fileNames: fileNames,
-        }
-    };
-}
-
 window.addEventListener("load", function() {
     const setToValueProperty = (x, v) => x.value = v;
     const setToCheckedProperty = (x, v) => x.checked = Boolean(parseInt(v, 10));
@@ -557,79 +469,6 @@ window.addEventListener("load", function() {
             })
     });
 
-    // movie button
-    document.getElementById("genMovieButton").title = "Generate movie file of accumulating code. To run this, http server must return COOP/COEP entries in the response header";
-    document.getElementById("genMovieButton").addEventListener("click", async obj => {
-        if (interruptor.isStarted) {
-            // cancel
-            interruptor.stop();
-            return;
-        }
-        if (!languageText.value) {
-            alert("language must be specified explicitly");
-            return;
-        }
-        refrectBackColor();
-        const fpsVal = parseFloat(fps.value)
-        if (!ffmpeg.isLoaded())
-            await ffmpeg.load();
-        try {
-            swichMutable(false, () => {
-                displayButton.disabled = true;
-                movieButton.textContent = "Stop";
-            });
-            interruptor.start();
-            const genImages = await makeImageGenerator({
-                hlarea: highlightArea,
-                fps: parseFloat(fps.value),
-                duration: parseFloat(targetDuration.value),
-                lang: languageText.value,
-                text: inputArea.value,
-                ffmpeg: ffmpeg,
-                interruption: interruptor,
-                isInsertThumbnail: isInsertThumbnail.checked,
-            });
-            movieFilename = `text.${movFormat.ext}`;
-            await genImages()
-                .then(vals => {
-                    if (!interruptor.isStarted)
-                        throw Error("Stopped.");
-                    movie = ffmpeg.run(
-                        '-r', `${fpsVal}`,
-                        '-pattern_type', 'glob', '-i', 'image*.png',
-                        '-s', `${vals.width}x${vals.height}`,
-                        '-pix_fmt', 'yuv420p',
-                        movieFilename);
-                    return [ vals, movie ];
-                })
-                .then(vals => {
-                    if (!interruptor.isStarted)
-                        throw Error("Stopped.");
-                    return vals[1].then(v => {
-                        return ffmpeg.FS('readFile', movieFilename);
-                    })
-                })
-                .then(movie => {
-                    const link = document.getElementById("downloader");
-                    link.href = URL.createObjectURL(new Blob([movie.buffer], { type: movFormat.mime }));
-                    link.download = movieFilename;
-                    link.target = '_blank';
-                    link.click();
-                })
-                .catch(alert);
-
-        } finally {
-            interruptor.stop();
-            await ffmpeg.exit();
-            swichMutable(true, () => {
-                displayButton.disabled = false;
-                movieButton.textContent = "Movie";
-            });
-        }
-
-
-    })
-
     // Preview button
     displayButton.title = "You can see accumulated highlight code. Language must be specified to press";
     displayButton.addEventListener("click", async obj => {
@@ -680,15 +519,9 @@ window.addEventListener("load", function() {
         }
     });
 
-    // style list
-    document.querySelectorAll(".styles li").forEach(elem => {
-        elem.addEventListener("click", event => {
-            event.preventDefault();
-            changeStyle(event.target.textContent);
-        })
-    })
-
-    document.getElementById("testButton").addEventListener("click", async obj => {
+    // movie button
+    document.getElementById("genMovieButton").title = "Generate movie file of accumulating code. To run this, http server must return COOP/COEP entries in the response header";
+    document.getElementById("genMovieButton").addEventListener("click", async obj => {
         if (interruptor.isStarted) {
             // cancel
             interruptor.stop();
@@ -775,7 +608,7 @@ window.addEventListener("load", function() {
                 link.download = movieFilename;
                 link.target = '_blank';
                 link.click();
-            }).catch(err => alert(e.message));
+            }).catch(err => alert(err.message));
         } finally {
             interruptor.stop();
             await ffmpeg.exit();
@@ -784,5 +617,16 @@ window.addEventListener("load", function() {
                 movieButton.textContent = "Movie";
             });
         }
-    })
+    });
+
+    // style list
+    document.querySelectorAll(".styles li").forEach(elem => {
+        elem.addEventListener("click", event => {
+            event.preventDefault();
+            changeStyle(event.target.textContent);
+        })
+    });
+
+    //document.getElementById("testButton").addEventListener("click", async obj => {
+    //});
 });
