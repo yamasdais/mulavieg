@@ -35,10 +35,6 @@ function makeHilighter(lang, text, onChangedLang) {
         };
     return hilighter;
 }
-function checkCursorChar(elem) {
-    var curText = elem.value;
-    return true;
-}
 
 /* sample code
 auto i = 0;
@@ -693,5 +689,100 @@ window.addEventListener("load", function() {
     })
 
     document.getElementById("testButton").addEventListener("click", async obj => {
+        if (interruptor.isStarted) {
+            // cancel
+            interruptor.stop();
+            return;
+        }
+        const duration = parseFloat(targetDuration.value);
+        const fpsVal = parseFloat(fps.value);
+        const totalFrames = fpsVal * duration / 1000;
+        const width = highlightArea.clientWidth;
+        const height = highlightArea.clientHeight;
+        const status = document.getElementById("status");
+        const durationResult = document.getElementById("duration");
+        const end = Math.round(totalFrames);
+        const frameNumLength = ("" + (end + 2)).length;
+        const genFileNumber = function(num) {
+            token = "0".repeat(frameNumLength);
+            return (token + num).slice(-frameNumLength);
+        }
+        const makeFfmpegCommand = function(fname) {
+            const mvWidth = (width % 2) ? width - 1 : width;
+            const mvHeight = (height % 2) ? height - 1 : height;
+            return [
+                '-r', `${fpsVal}`,
+                '-pattern_type', 'glob', '-i', 'image*.png',
+                '-s', `${mvWidth}x${mvHeight}`,
+                '-pix_fmt', 'yuv420p',
+                fname
+            ];
+
+        }
+        const movieFilename = `text.${movFormat.ext}`;
+    
+        if (!ffmpeg.isLoaded())
+            await ffmpeg.load();
+
+        try {
+            swichMutable(false, () => {
+                displayButton.disabled = true;
+                movieButton.textContent = "Stop";
+            });
+            interruptor.start();
+            refrectBackColor();
+            let fileIndex = 0;
+            const beginAt = parseInt(beginIndex.value);
+            const endAt = parseInt(endIndex.value);
+            const totalImages = Math.abs(endAt - beginAt) + 2;
+            const frameProgress = function() {
+                return fileIndex / totalFrames;
+            }
+            await makeCodeHighlighter({
+                hlElem: highlightArea,
+                lang: languageText.value,
+                text: inputArea.value,
+                fps: parseFloat(fps.value),
+                duration: duration,
+                interruption: interruptor,
+                beginAt: beginAt,
+                endAt: endAt,
+                onHighlited: obj => {
+                    return makePng(highlightArea, width, height)
+                        .then(imgURL => fetch(imgURL))
+                        .then(img => img.blob())
+                        .then(blob => blob.arrayBuffer())
+                        .then(async buf => {
+                            const outBuf = new Uint8Array(buf);
+                            const imgProgress = obj.curPos / obj.totalPos;
+                            do {
+                                const fname = `image${genFileNumber(fileIndex++)}.png`;
+                                await ffmpeg.FS('writeFile', fname, outBuf);
+                            } while (frameProgress() < imgProgress);
+                        })
+                },
+            }).then(obj => {
+                if (!interruptor.isStarted)
+                    throw Error("Stopped.");
+                return ffmpeg.run.apply(null, makeFfmpegCommand(movieFilename));
+            }).then(obj => {
+                if (!interruptor.isStarted)
+                    throw Error("Stopped.");
+                return ffmpeg.FS('readFile', movieFilename);
+            }).then(movie => {
+                const link = document.getElementById('downloader');
+                link.href = URL.createObjectURL(new Blob([movie.buffer], { type: movFormat.mime }));
+                link.download = movieFilename;
+                link.target = '_blank';
+                link.click();
+            }).catch(err => alert(e.message));
+        } finally {
+            interruptor.stop();
+            await ffmpeg.exit();
+            swichMutable(true, () => {
+                displayButton.disabled = false;
+                movieButton.textContent = "Movie";
+            });
+        }
     })
 });
