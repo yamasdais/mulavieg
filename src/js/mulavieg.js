@@ -330,6 +330,9 @@ window.addEventListener("load", function() {
         for (const e of entries) {
             updateSizeInfo();
         }
+        const isDisabled = highlightArea.scrollWidth == 0 || highlightArea.scrollHeight == 0;
+        document.getElementById("genPngButton").disabled = isDisabled;
+        movieButton.disabled = isDisabled;
     });
     resizeObserver.observe(hilightPre);
     hilightPre.addEventListener('scroll', obj => {
