@@ -63,7 +63,7 @@ function makePng(elem, width, height, isTransparent) {
     return htmlToImage.toPng(elem, {
         width: width,
         height: height,
-        background: bgC,
+        backgroundColor: bgC,
     })
 }
 
@@ -244,11 +244,13 @@ async function makeCodeHighlighter(param) {
 
     await makeHilighted(true)
         .then(forwardTask);
+
     for (i of range()) {
         curCycle = Math.abs(i - beginAt) + 1;
         await makeHilighted(true, i)
             .then(forwardTask);
     }
+
     curCycle = totalPos;
     if (isReversed) {
         await hilightText(prevCache + trailCache)
@@ -257,7 +259,6 @@ async function makeCodeHighlighter(param) {
         await hilightText(text)
             .then(forwardTask);
     }
-
 }
 
 window.addEventListener("load", function() {
@@ -301,6 +302,7 @@ window.addEventListener("load", function() {
 
     const inputArea = document.getElementById("inputArea");
     const highlightArea = document.getElementById("highlightArea");
+    const hilightPre = document.getElementById("highlightPre")
     const displayButton = document.getElementById("displayButton");
     const movieButton = document.getElementById("genMovieButton");
     const languageText = getObjectWithInitValue("specificLanguage", setToValueProperty, "");
@@ -311,13 +313,31 @@ window.addEventListener("load", function() {
     const targetDuration = getObjectWithInitValue("targetDuration", setToValueProperty, 2000);
     const fps = getObjectWithInitValue("fps", setToValueProperty, 30);
     const viewer = document.getElementById("highlightArea");
-    const isInsertThumbnail = getObjectWithInitValue("isInsertThumbnail", setToCheckedProperty, false);
+    //const isInsertThumbnail = getObjectWithInitValue("isInsertThumbnail", setToCheckedProperty, false);
     const isEnableLastCursor = getObjectWithInitValue("isEnableLastCursor", setToCheckedProperty, false);
-    setupEventListenerForCheckbox("isInsertThumbnail");
+    //setupEventListenerForCheckbox("isInsertThumbnail");
     setupEventListenerForCheckbox("isEnableLastCursor");
+    const updateSizeInfo = function() {
+        const dpr = window.devicePixelRatio;
+        const ss = { width: Math.round(hilightPre.scrollWidth), height: Math.round(hilightPre.scrollHeight) };
+        const sp = { left: Math.round(hilightPre.scrollLeft), top: Math.round(hilightPre.scrollTop) }
+        const cs = { width: Math.round(hilightPre.clientWidth), height: Math.round(hilightPre.clientHeight) };
+        const imgs = { width: Math.floor(highlightArea.scrollWidth * dpr), height: Math.floor(highlightArea.scrollHeight) };
+        document.getElementById("sizeInfo").textContent =
+         `scroll: (${sp.left}, ${sp.top}) ${ss.width}x${ss.height}, client: ${cs.width}x${cs.height}, Image: ${imgs.width}x${imgs.height}`;
+    }
+    const resizeObserver = new ResizeObserver(entries => {
+        for (const e of entries) {
+            updateSizeInfo();
+        }
+    });
+    resizeObserver.observe(hilightPre);
+    hilightPre.addEventListener('scroll', obj => {
+        updateSizeInfo();
+    })
     const refrectBackColor = function() {
         hlbg = getComputedStyle(highlightArea).backgroundColor;
-        document.getElementById('highlightPre').style.background = hlbg;
+        hilightPre.style.background = hlbg;
     };
     const swichMutable = function(isMutable, extra) {
         isDisabled = !isMutable;
@@ -325,7 +345,7 @@ window.addEventListener("load", function() {
         for (const n of [ "inputArea", "refreshButton", "prepareButton",
                           "genPngButton", "specificLanguage", "viewerFontFamily",
                           "fontSize", "targetDuration", "fps", "movieFormat",
-                          "isInsertThumbnail", "isEnableLastCursor" ]) {
+                          /*"isInsertThumbnail",*/ "isEnableLastCursor" ]) {
             document.getElementById(n).disabled = isDisabled;
         }
         extra();
@@ -459,7 +479,7 @@ window.addEventListener("load", function() {
     // PNG button
     document.getElementById("genPngButton").title = "Generate PNG image of current highlighted code pane.";
     document.getElementById("genPngButton").addEventListener("click", obj => {
-        makePng(highlightArea, highlightArea.clientWidth, highlightArea.clientHeight)
+        makePng(highlightArea, highlightArea.scrollWidth, highlightArea.scrollHeight)
             .then(dUrl => {
                 var link = document.getElementById("downloader");
                 link.href = dUrl;
@@ -530,8 +550,8 @@ window.addEventListener("load", function() {
         const duration = parseFloat(targetDuration.value);
         const fpsVal = parseFloat(fps.value);
         const totalFrames = fpsVal * duration / 1000;
-        const width = highlightArea.clientWidth;
-        const height = highlightArea.clientHeight;
+        const width = highlightArea.scrollWidth;
+        const height = highlightArea.scrollHeight;
         const status = document.getElementById("status");
         const durationResult = document.getElementById("duration");
         const end = Math.round(totalFrames);
