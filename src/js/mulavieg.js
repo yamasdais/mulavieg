@@ -313,7 +313,7 @@ window.addEventListener("load", function() {
     const targetDuration = getObjectWithInitValue("targetDuration", setToValueProperty, 2000);
     const fps = getObjectWithInitValue("fps", setToValueProperty, 30);
     const viewer = document.getElementById("highlightArea");
-    //const isInsertThumbnail = getObjectWithInitValue("isInsertThumbnail", setToCheckedProperty, false);
+    const isTransparent = getObjectWithInitValue("isTransparent", setToCheckedProperty, false);
     const isEnableLastCursor = getObjectWithInitValue("isEnableLastCursor", setToCheckedProperty, false);
     //setupEventListenerForCheckbox("isInsertThumbnail");
     setupEventListenerForCheckbox("isEnableLastCursor");
@@ -322,7 +322,7 @@ window.addEventListener("load", function() {
         const ss = { width: Math.round(hilightPre.scrollWidth), height: Math.round(hilightPre.scrollHeight) };
         const sp = { left: Math.round(hilightPre.scrollLeft), top: Math.round(hilightPre.scrollTop) }
         const cs = { width: Math.round(hilightPre.clientWidth), height: Math.round(hilightPre.clientHeight) };
-        const imgs = { width: Math.floor(highlightArea.scrollWidth * dpr), height: Math.floor(highlightArea.scrollHeight) };
+        const imgs = { width: Math.floor(highlightArea.scrollWidth * dpr), height: Math.floor(highlightArea.scrollHeight * dpr) };
         document.getElementById("sizeInfo").textContent =
          `scroll: (${sp.left}, ${sp.top}) ${ss.width}x${ss.height}, client: ${cs.width}x${cs.height}, Image: ${imgs.width}x${imgs.height}`;
     }
@@ -348,7 +348,7 @@ window.addEventListener("load", function() {
         for (const n of [ "inputArea", "refreshButton", "prepareButton",
                           "genPngButton", "specificLanguage", "viewerFontFamily",
                           "fontSize", "targetDuration", "fps", "movieFormat",
-                          /*"isInsertThumbnail",*/ "isEnableLastCursor" ]) {
+                          "isTransparent", "isEnableLastCursor" ]) {
             document.getElementById(n).disabled = isDisabled;
         }
         extra();
@@ -482,7 +482,7 @@ window.addEventListener("load", function() {
     // PNG button
     document.getElementById("genPngButton").title = "Generate PNG image of current highlighted code pane.";
     document.getElementById("genPngButton").addEventListener("click", obj => {
-        makePng(highlightArea, highlightArea.scrollWidth, highlightArea.scrollHeight)
+        makePng(highlightArea, highlightArea.scrollWidth, highlightArea.scrollHeight, isTransparent.checked)
             .then(dUrl => {
                 var link = document.getElementById("downloader");
                 link.href = dUrl;
@@ -570,7 +570,7 @@ window.addEventListener("load", function() {
                 '-r', `${fpsVal}`,
                 '-pattern_type', 'glob', '-i', 'image*.png',
                 '-s', `${mvWidth}x${mvHeight}`,
-                '-pix_fmt', 'yuv420p',
+                '-pix_fmt', 'yuva444p',
                 fname
             ];
 
@@ -604,7 +604,7 @@ window.addEventListener("load", function() {
                 beginAt: beginAt,
                 endAt: endAt,
                 onHighlited: obj => {
-                    return makePng(highlightArea, width, height)
+                    return makePng(highlightArea, width, height, isTransparent.checked)
                         .then(imgURL => fetch(imgURL))
                         .then(img => img.blob())
                         .then(blob => blob.arrayBuffer())
