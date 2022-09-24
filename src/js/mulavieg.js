@@ -92,17 +92,66 @@ const makeCursor = function(hlElem, trailingCodeTxt, defaultCursor = ' ') {
  * Movie format selection stuff
  */
 class MovieFormatItem {
-    constructor(name, ext, mime) {
+    makeCmdFFmpegRun; 
+    constructor(name, ext, mime, cmdFFmpegRun) {
         this.name = name;
         this.ext = ext;
         this.mime = mime;
+        this.makeCmdFFmpegRun = cmdFFmpegRun || function(fname, width, height, fps) {
+            return [
+                '-r', `${fps}`,
+                '-pattern_type', 'glob', '-i', 'image*.png',
+                '-s', `${width}x${height}`,
+                '-pix_fmt', 'yuva420p',
+                fname
+            ];
+        };
     }
 }
 
 function* getSupportedMovieFormats() {
-    yield new MovieFormatItem("mp4", "mp4", "video/mp4");
-    yield new MovieFormatItem("webm", "webm", "video/webm");
-    yield new MovieFormatItem("webp", "webp", "image/webp");
+    yield new MovieFormatItem("mp4", "mp4", "video/mp4",
+        (fname, width, height, fps) => {
+            const mvWidth = (width % 2) ? width - 1 : width;
+            const mvHeight = (height % 2) ? height - 1 : height;
+            let ret = [
+                '-r', `${fps}`,
+                '-pattern_type', 'glob', '-i', 'image*.png',
+                //'-s', `${mvWidth}x${mvHeight}`,
+                '-vf', `scale=${mvWidth}:-2`, "-sws_flags", "lanczos+accurate_rnd",
+                '-pix_fmt', 'yuva420p',
+                '-c:v', 'libx264', '-crf', '8',
+                fname
+            ];
+
+            return ret;
+        });
+    yield new MovieFormatItem("webm", "webm", "video/webm",
+        (fname, width, height, fps) => {
+            let ret = [
+                '-r', `${fps}`,
+                '-pattern_type', 'glob', '-i', 'image*.png',
+                '-s', `${width}x${height}`,
+                '-pix_fmt', 'yuva420p', '-auto-alt-ref', '0',
+                '-c:v', 'libvpx', '-lossless', '1',
+                fname
+            ];
+
+            return ret;
+        });
+    yield new MovieFormatItem("webp", "webp", "image/webp",
+        (fname, width, height, fps) => {
+            let ret = [
+                '-r', `${fps}`,
+                '-pattern_type', 'glob', '-i', 'image*.png',
+                '-s', `${width}x${height}`,
+                '-vcodec', 'libwebp', '-lossless', '1',
+                '-pix_fmt', 'yuva420p',
+                fname
+            ];
+
+            return ret;
+        });
 }
 
 function makeMovieFormats(onChange) {
@@ -316,13 +365,20 @@ window.addEventListener("load", function() {
     const isTransparent = getObjectWithInitValue("isTransparent", setToCheckedProperty, false);
     const isEnableLastCursor = getObjectWithInitValue("isEnableLastCursor", setToCheckedProperty, false);
     //setupEventListenerForCheckbox("isInsertThumbnail");
+    setupEventListenerForCheckbox("isTransparent");
     setupEventListenerForCheckbox("isEnableLastCursor");
-    const updateSizeInfo = function() {
+    const calcImageSize = () => {
         const dpr = window.devicePixelRatio;
+        return {
+            width: Math.floor(hilightPre.scrollWidth * dpr),
+            height: Math.floor(hilightPre.scrollHeight * dpr)
+        };
+    };
+    const updateSizeInfo = function() {
         const ss = { width: Math.round(hilightPre.scrollWidth), height: Math.round(hilightPre.scrollHeight) };
         const sp = { left: Math.round(hilightPre.scrollLeft), top: Math.round(hilightPre.scrollTop) }
         const cs = { width: Math.round(hilightPre.clientWidth), height: Math.round(hilightPre.clientHeight) };
-        const imgs = { width: Math.floor(highlightArea.scrollWidth * dpr), height: Math.floor(highlightArea.scrollHeight * dpr) };
+        const imgs = calcImageSize();
         document.getElementById("sizeInfo").textContent =
          `scroll: (${sp.left}, ${sp.top}) ${ss.width}x${ss.height}, client: ${cs.width}x${cs.height}, Image: ${imgs.width}x${imgs.height}`;
     }
@@ -482,7 +538,7 @@ window.addEventListener("load", function() {
     // PNG button
     document.getElementById("genPngButton").title = "Generate PNG image of current highlighted code pane.";
     document.getElementById("genPngButton").addEventListener("click", obj => {
-        makePng(highlightArea, highlightArea.scrollWidth, highlightArea.scrollHeight, isTransparent.checked)
+        makePng(highlightArea, hilightPre.scrollWidth, hilightPre.scrollHeight, isTransparent.checked)
             .then(dUrl => {
                 var link = document.getElementById("downloader");
                 link.href = dUrl;
@@ -553,8 +609,11 @@ window.addEventListener("load", function() {
         const duration = parseFloat(targetDuration.value);
         const fpsVal = parseFloat(fps.value);
         const totalFrames = fpsVal * duration / 1000;
-        const width = highlightArea.scrollWidth;
-        const height = highlightArea.scrollHeight;
+        const img = calcImageSize();
+        const width = img.width;
+        const height = img.height;
+        const pngWidth = hilightPre.scrollWidth;
+        const pngHeight = hilightPre.scrollHeight;
         const status = document.getElementById("status");
         const durationResult = document.getElementById("duration");
         const end = Math.round(totalFrames);
@@ -563,19 +622,10 @@ window.addEventListener("load", function() {
             token = "0".repeat(frameNumLength);
             return (token + num).slice(-frameNumLength);
         }
-        const makeFfmpegCommand = function(fname) {
-            const mvWidth = (width % 2) ? width - 1 : width;
-            const mvHeight = (height % 2) ? height - 1 : height;
-            return [
-                '-r', `${fpsVal}`,
-                '-pattern_type', 'glob', '-i', 'image*.png',
-                '-s', `${mvWidth}x${mvHeight}`,
-                '-pix_fmt', 'yuva444p',
-                fname
-            ];
-
-        }
         const movieFilename = `text.${movFormat.ext}`;
+        const makeFfmpegCommand = function() {
+            return movFormat.makeCmdFFmpegRun(movieFilename, width, height, fpsVal);
+        }
     
         if (!ffmpeg.isLoaded())
             await ffmpeg.load();
@@ -604,7 +654,7 @@ window.addEventListener("load", function() {
                 beginAt: beginAt,
                 endAt: endAt,
                 onHighlited: obj => {
-                    return makePng(highlightArea, width, height, isTransparent.checked)
+                    return makePng(highlightArea, pngWidth, pngHeight, isTransparent.checked)
                         .then(imgURL => fetch(imgURL))
                         .then(img => img.blob())
                         .then(blob => blob.arrayBuffer())
@@ -620,7 +670,7 @@ window.addEventListener("load", function() {
             }).then(obj => {
                 if (!interruptor.isStarted)
                     throw Error("Stopped.");
-                return ffmpeg.run.apply(null, makeFfmpegCommand(movieFilename));
+                return ffmpeg.run.apply(null, makeFfmpegCommand());
             }).then(obj => {
                 if (!interruptor.isStarted)
                     throw Error("Stopped.");
