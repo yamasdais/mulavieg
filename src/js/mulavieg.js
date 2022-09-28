@@ -3,16 +3,6 @@
 * Copyright: 2022 yamasdais @ github
 * License: MIT License
 *
-* TODO:
-* * エラー処理きちんと
-*     -> ffmpeg 使うところは改善
-* * 試作的なコードをもうちょっと整理する
-* PLAN:
-* * 使い方を書く
-*     -> ツールチップ追加
-* * ffmpeg log 表示をオプションに
-* * 見栄えをもうちょっと何とかする
-*     -> ちょっとマシにしたつもり
 */
 
 function getObjectWithInitValue(name, mutator, defaultValue) {
@@ -117,7 +107,6 @@ function* getSupportedMovieFormats() {
             let ret = [
                 '-r', `${fps}`,
                 '-pattern_type', 'glob', '-i', 'image*.png',
-                //'-s', `${mvWidth}x${mvHeight}`,
                 '-vf', `scale=${mvWidth}:-2`, "-sws_flags", "lanczos+accurate_rnd",
                 '-pix_fmt', 'yuva420p',
                 '-c:v', 'libx264', '-crf', '8',
@@ -364,7 +353,6 @@ window.addEventListener("load", function() {
     const viewer = document.getElementById("highlightArea");
     const isTransparent = getObjectWithInitValue("isTransparent", setToCheckedProperty, false);
     const isEnableLastCursor = getObjectWithInitValue("isEnableLastCursor", setToCheckedProperty, false);
-    //setupEventListenerForCheckbox("isInsertThumbnail");
     setupEventListenerForCheckbox("isTransparent");
     setupEventListenerForCheckbox("isEnableLastCursor");
     const calcImageSize = () => {
@@ -374,6 +362,11 @@ window.addEventListener("load", function() {
             height: Math.floor(hilightPre.scrollHeight * dpr)
         };
     };
+    const calcMilSecPerFrame = () =>
+        1000.0 / fps.value;
+    const calcDuration = () =>
+        targetDuration.value * calcMilSecPerFrame();
+
     const updateSizeInfo = function() {
         const ss = { width: Math.round(hilightPre.scrollWidth), height: Math.round(hilightPre.scrollHeight) };
         const sp = { left: Math.round(hilightPre.scrollLeft), top: Math.round(hilightPre.scrollTop) }
@@ -480,11 +473,12 @@ window.addEventListener("load", function() {
 
     // target duration
     targetDuration.addEventListener("input", obj => {
-        document.getElementById("targetDurationValue").innerHTML = `${targetDuration.value}ms`;
+        document.getElementById("targetDurationValue").innerHTML = `${Math.round(calcDuration())}ms`;
     })
     targetDuration.dispatchEvent(new Event("input"));
     targetDuration.addEventListener("change", obj => {
         storeObjectValue("targetDuration", targetDuration.value);
+        targetDuration.title = `${targetDuration.value}frm x ${calcMilSecPerFrame()}ms/frm = ${Math.round(calcDuration())}`;
     });
 
     // fps
@@ -494,6 +488,7 @@ window.addEventListener("load", function() {
     fps.dispatchEvent(new Event("input"));
     fps.addEventListener("change", obj => {
         storeObjectValue("fps", fps.value);
+        targetDuration.dispatchEvent(new Event("input"));
     });
 
     // highlight style
@@ -556,7 +551,7 @@ window.addEventListener("load", function() {
             interruptor.stop();
             return;
         }
-        const duration = parseFloat(targetDuration.value);
+        const duration = calcDuration();
         const status = document.getElementById("status");
         const durationResult = document.getElementById("duration");
         try {
@@ -606,7 +601,7 @@ window.addEventListener("load", function() {
             interruptor.stop();
             return;
         }
-        const duration = parseFloat(targetDuration.value);
+        const duration = calcDuration();
         const fpsVal = parseFloat(fps.value);
         const totalFrames = fpsVal * duration / 1000;
         const img = calcImageSize();

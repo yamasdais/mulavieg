@@ -61,6 +61,7 @@ code.hljs > .mulavieg-cursor {
     margin: 1px;
     width: fit-content;
     height: fit-content;
+    overflow: hidden;
 }
 #highlightPane {
     width: fit-content;
