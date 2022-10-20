@@ -266,10 +266,30 @@
         <script language="javascript" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.6.0/highlight.min.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/html-to-image/1.10.8/html-to-image.min.js"></script>
         <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.11.5/dist/ffmpeg.min.js" crossorigin="anonymous"></script>
+        <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/uuidjs@4.2.12/src/uuid.min.js" crossorigin="anonymous"></script>
         <!--script src="./lib/ffmpeg.min.js"></script-->
         <script type="text/javascript" src="./js/mulavieg.js"></script>
     </head>
     <body>
+        <dialog id="callTemplate">
+            <h3>Call Template</h3>
+            <label for="templateSelector">Choose Template:</label>
+            <select id="templateSelector">
+            </select>
+            <div class="dialogButtons">
+                <button id="doCallTemplate">Apply</button>
+                <button class="cancelBtn">Cancel</button>
+            </div>
+        </dialog>
+        <dialog id="storeTemplate">
+            <h3>Store Template</h3>
+            <label for="storeTemplateName">Template Name:</label>
+            <input id="storeTemplateName" type="text">
+            <div class="dialogButtons">
+                <button id="doStoreTemplate" disabled>Store</button>
+                <button class="cancelBtn">Cancel</button>
+            </div>
+        </dialog>
         <header>
             <!--<h1>Cumulative text movie maker</h1>-->
         </header>
@@ -289,6 +309,17 @@
                         <button id="displayButton" disabled>Preview</button>
                         <button id="genPngButton">Image</button>
                         <button id="genMovieButton" disabled>Movie</button>
+                        <div id="menuArea" class="menuDropdown">
+                            <button id="menuButton"><svg xmlns="http://www.w3.org/2000/svg" version="1.1" width="16px" height="22px">
+                                <line x1="2" x2="14" y1="8" y2="8" stroke="#f0f0f0" stroke-linecap="round" stroke-width="3"/>
+                                <line x1="2" x2="14" y1="14" y2="14" stroke="#f0f0f0" stroke-linecap="round" stroke-width="3"/>
+                                <line x1="2" x2="14" y1="20" y2="20" stroke="#f0f0f0" stroke-linecap="round" stroke-width="3"/>
+                            </svg></button>
+                            <div id="menuList" class="dropdownContent">
+                                <a href="#callTemplate">Call Template</a>
+                                <a href="#storeTemplate">Store Template</a>
+                            </div>
+                        </div>
                         <!--<button id="testButton">t</button>-->
                     </div>
                     <div class="prefRow">
