@@ -106,10 +106,10 @@ code.hljs > .mulavieg-cursor {
     font-size: 1rem;
     cursor: pointer;
 }
-#buttonArea button:hover {
+#buttonArea button:hover:not(#menuButton) {
     background: #e59882;
 }
-#buttonArea button:focus {
+#buttonArea button:focus:not(#menuButton) {
     outline: none;
     background: #e59882;
 }
@@ -117,6 +117,42 @@ code.hljs > .mulavieg-cursor {
     outline: none;
     background: #eac9c0;
     cursor: inherit;
+}
+
+.menuDropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.dropdownContent {
+    display: none;
+    position: absolute;
+    background-color: #ddd;
+    min-width: 120px;
+    top: 32px;
+    left: -94px;
+}
+
+.menuDropdown:hover #menuButton {
+    background-color: #ddd;
+}
+
+.visibleDropdown {
+    display: block;
+}
+.dropdownContent > a {
+    font-family: san-serif;
+    font-size: small;
+    color: black;
+    padding: 6px 8px;
+    text-decoration: none;
+    display: block;
+}
+
+.dropdownContent > a:hover {
+    color: rgb(38, 18, 215);
+    background-color: #74c6f1;
+    transition: all 0.5s;
 }
 
 .prefRow {
@@ -231,4 +267,32 @@ p.inprefRow {
   font-size: smaller;
   position: absolute;
   left: 0;
+}
+
+dialog {
+    padding: 0px;
+}
+dialog > h3 {
+    color: #eee;
+    font-size: smaller;
+    font-family: sans-serif;
+    margin: 0px 0px 0px;
+    padding: 4px 2px 4px 2px;
+    background-color: #3124c6;
+}
+
+#templateSelector {
+    min-width: 150px;
+}
+
+.dialogButtons {
+    text-align: right;
+}
+
+#templateSelector:nth-child(0):disabled {
+    color: gray;
+}
+
+dialog > label {
+    color: #333;
 }

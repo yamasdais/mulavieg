@@ -13,6 +13,15 @@ function getObjectWithInitValue(name, mutator, defaultValue) {
 function storeObjectValue(name, value) {
     localStorage.setItem(name, value);
 }
+
+function makePreferenceItem(dict, name, value) {
+    dict[name] = value;
+}
+function loadPreferenceItem(dict, name, e) {
+    const value = dict[name];
+    e(value);
+}
+
 function makeHilighter(lang, text, onChangedLang) {
     const hilighter = lang
         ? () => hljs.highlight(text, { language: lang, ignoreIllegals: true })
@@ -165,6 +174,85 @@ function makeMovieFormats(onChange) {
     });
 
     return formatDict[selector.options[selector.selectedIndex].value];
+}
+
+function setupMenu(makePreference, reflectPreference) {
+    const menu = document.getElementById("menuArea");
+    const menuList = document.getElementById("menuList");
+    menu.addEventListener("mouseenter", obj => {
+        menuList.classList.add("visibleDropdown");
+    })
+    menu.addEventListener("mouseleave", obj => {
+        menuList.classList.remove("visibleDropdown");
+    })
+    for (const item of menuList.querySelectorAll("a")) {
+        const name = new URL(item.href).hash;
+        const dialog = document.querySelector(name);
+        const cancel = dialog.querySelector(".cancelBtn");
+        if (cancel !== undefined) {
+            cancel.addEventListener("click", obj => {
+                dialog.close();
+            });
+        }
+        item.addEventListener("click", obj => {
+            menuList.classList.remove("visibleDropdown");
+            if (name === "#callTemplate") {
+                updateTemplateList();
+            }
+            dialog.showModal();
+        })
+    }
+
+    const loadTemplate = function() {
+        const storedText = localStorage.getItem("templatePrefs");
+        return storedText !== null ? JSON.parse(storedText) : {};
+    };
+    // callTemplate
+    const selector = document.getElementById("templateSelector");
+    const callButton = document.getElementById("doCallTemplate");
+    var tmpls = null;
+    const updateTemplateList = function() {
+        tmpls = loadTemplate();
+        const keys = Object.keys(tmpls);
+        while (selector.lastChild) {
+            selector.removeChild(selector.lastChild);
+        }
+        if (keys && keys.length) {
+            selector.disabled = false;
+            callButton.disabled = false;
+            for (const key of keys) {
+                selector.add(new Option(tmpls[key].name, key));
+            }
+        } else {
+            const item = new Option("No template available", "", true, true);
+            item.disabled = true;
+            selector.disabled = true;
+            callButton.disabled = true;
+            selector.add(item);
+        }
+    }
+    callButton.addEventListener("click", obj => {
+        var cur = selector.options[selector.selectedIndex];
+        var pref = tmpls[cur.value];
+        reflectPreference(pref);
+        document.getElementById("callTemplate").close();
+    })
+
+    // storeTemplate
+    const templateName = document.getElementById("storeTemplateName");
+    const storeButton = document.getElementById("doStoreTemplate");
+    templateName.addEventListener("input", obj => {
+        storeButton.disabled = templateName.value.length == 0;
+    });
+    storeButton.addEventListener("click", obj => {
+        const pref = makePreference(templateName.value);
+        const dict = loadTemplate();
+        const uuid = UUID.generate();
+
+        dict[uuid] = pref;
+        localStorage.setItem("templatePrefs", JSON.stringify(dict));
+        document.getElementById("storeTemplate").close();
+    });
 }
 
 /*
@@ -402,6 +490,50 @@ window.addEventListener("load", function() {
         }
         extra();
     };
+    const makePreference = function(name) {
+        var dict = {};
+        makePreferenceItem(dict, "specificLanguage", languageText.value);
+        makePreferenceItem(dict, "viewerFontFamily", viewerFontFamily.value);
+        makePreferenceItem(dict, "fontSize", fontSize.value);
+        makePreferenceItem(dict, "targetDuration", targetDuration.value);
+        makePreferenceItem(dict, "fps", fps.value);
+
+        const currentStyle = document.querySelector(".styles .current");
+        const currentStyleType = currentStyle.textContent;
+        makePreferenceItem(dict, "selectedStyle", currentStyleType);
+        makePreferenceItem(dict, "movieFormat", movFormat.name);
+        makePreferenceItem(dict, "name", name);
+        return dict;
+    }
+    const reflectPreference = function(prefs) {
+        loadPreferenceItem(prefs, "specificLanguage", v => {
+            languageText.value = v;
+            languageText.dispatchEvent(new Event("change"))
+        });
+        loadPreferenceItem(prefs, "viewerFontFamily", v => {
+            viewerFontFamily.value = v;
+            viewerFontFamily.dispatchEvent(new Event("change"));
+        });
+        loadPreferenceItem(prefs, "fontSize", v => {
+            fontSize.value = v;
+            fontSize.dispatchEvent(new Event("change"));
+        });
+        loadPreferenceItem(prefs, "targetDuration", v => {
+            targetDuration.value = v;
+            targetDuration.dispatchEvent(new Event("change"));
+        });
+        loadPreferenceItem(prefs, "fps", v => {
+            fps.value = v;
+            fps.dispatchEvent(new Event("change"));
+        });
+        loadPreferenceItem(prefs, "selectedStyle", changeStyle);
+        loadPreferenceItem(prefs, "movieFormat", v => {
+            const movFormat = document.getElementById("movieFormat");
+            movFormat.value = v;
+            movFormat.dispatchEvent(new Event("change"));
+        });
+
+    }
     const interruptor = new InterruptionStatus();
     // input text area
     inputArea.addEventListener("change", obj => {
@@ -695,6 +827,7 @@ window.addEventListener("load", function() {
         })
     });
 
+    setupMenu(makePreference, reflectPreference);
     //document.getElementById("testButton").addEventListener("click", async obj => {
     //});
 });
